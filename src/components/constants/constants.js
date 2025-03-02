@@ -5,8 +5,6 @@ export const YodaTokenABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
 ];
-
-// ABI aggiornato per essere compatibile con il nuovo contratto
 export const VitaVerseNFTABI = [
   "function balanceOf(address owner) view returns (uint256)",
   "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
@@ -19,7 +17,6 @@ export const VitaVerseNFTABI = [
   "function hasBadge(address user, uint256 badgeId) view returns (bool)",
   "function getTopHealthUsers(uint256 limit) view returns (address[] memory, uint256[] memory)",
   // Eventi
-
   "event HealthDataUpdated(address indexed user, uint256 weight, uint256 sleepHours, uint256 energyLevel, uint256 exercise, uint256 waterIntake)",
   "event BadgeEarned(address indexed user, uint256 badgeId, string badgeName)",
   "event BadgePurchased(address indexed user, uint256 badgeId, uint256 price)",
