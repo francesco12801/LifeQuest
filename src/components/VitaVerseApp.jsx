@@ -1,41 +1,22 @@
 import React, { useState, useEffect } from "react";
-import {
-  Activity,
-  Moon,
-  Droplet,
-  ShoppingCart,
-  Tag,
-  Wallet,
-  Clock,
-  TrendingUp,
-  Award,
-} from "lucide-react";
+import { Activity, Moon, Droplet, Wallet } from "lucide-react";
 import { ethers } from "ethers";
 
-// Example ABI - Replace with actual ABIs exported from the Solidity compiler
-// Note: In a real project, you would import these from JSON files
-const YodaTokenABI = [
-  "function balanceOf(address owner) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)",
-];
+// Importazione dei componenti
+import Dashboard from "./Dashboard";
+import Badges from "./Badges";
+import Statistics from "./Statistics";
+import Leaderboard from "./Leaderboard";
 
-const VitaVerseNFTABI = [
-  "function balanceOf(address owner) view returns (uint256)",
-  "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-  "function updateHealthData(uint256 weight, uint256 sleepHours, uint256 energyLevel, uint256 exercise, uint256 waterIntake) returns (bool)",
-  "function getHealthData(address user) view returns (uint256, uint256, uint256, uint256, uint256, uint256)",
-  "function purchaseBadge(uint256 badgeId) returns (bool)",
-  "function badges(uint256 badgeId) view returns (string, string, uint256, uint256, uint256, string)",
-  "function hasBadge(address user, uint256 badgeId) view returns (bool)",
-  "event HealthDataUpdated(address indexed user, uint256 weight, uint256 sleepHours, uint256 energyLevel, uint256 exercise, uint256 waterIntake)",
-  "event BadgeEarned(address indexed user, uint256 badgeId, string badgeName)",
-];
-
-// Addresses on the Sepolia testnet - replace with actual addresses
-const YODA_TOKEN_ADDRESS = "0xYourYodaTokenAddressHere"; // Address provided by the professor
-const VITAVERSE_NFT_ADDRESS = "0xYourVitaVerseNFTAddressHere"; // Address of your deployed contract
+// Importazione delle costanti
+import {
+  YodaTokenABI,
+  VitaVerseNFTABI,
+  YODA_TOKEN_ADDRESS,
+  VITAVERSE_NFT_ADDRESS,
+  defaultBadges,
+  defaultHealthData,
+} from "./constants/constants";
 
 function VitaVerseApp() {
   // User and wallet state
@@ -58,54 +39,33 @@ function VitaVerseApp() {
   const [successMessage, setSuccessMessage] = useState("");
 
   // Health data state
-  const [healthData, setHealthData] = useState({
-    weight: 700, // Stored as 70.0 kg * 10
-    sleepHours: 75, // Stored as 7.5 hours * 10
-    energyLevel: 8,
-    exercise: 30,
-    waterIntake: 2000,
-    lastUpdated: 0,
+  const [healthData, setHealthData] = useState(defaultHealthData);
+  // statistics state
+  const [userStats, setUserStats] = useState({
+    streakDays: 0,
+    totalUpdates: 0,
+    averageWaterIntake: 0,
+    averageSleepHours: 0,
+    averageExerciseMinutes: 0,
   });
 
-  // Available badges
-  const [availableBadges, setAvailableBadges] = useState([
-    {
-      id: 0,
-      name: "Early Bird",
-      description: "Completed 7 consecutive days of morning exercise",
-      price: 20,
-      supply: 100,
-      remaining: 100,
-      type: "EarlyBird",
-      icon: Moon,
-      earned: false,
-    },
-    {
-      id: 1,
-      name: "Workout Warrior",
-      description: "Achieved 1000 total minutes of exercise",
-      price: 50,
-      supply: 50,
-      remaining: 50,
-      type: "WorkoutWarrior",
-      icon: Activity,
-      earned: false,
-    },
-    {
-      id: 2,
-      name: "Hydration Hero",
-      description:
-        "Maintained daily water intake above 2500ml for 14 days",
-      price: 30,
-      supply: 75,
-      remaining: 75,
-      type: "HydrationHero",
-      icon: Droplet,
-      earned: false,
-    },
-  ]);
+  // Aggiungiamo le icone ai badge
+  const [availableBadges, setAvailableBadges] = useState(
+    defaultBadges.map((badge) => {
+      // Assegna le icone in base al tipo
+      let BadgeIcon;
+      if (badge.type === "EarlyBird") {
+        BadgeIcon = Moon;
+      } else if (badge.type === "WorkoutWarrior") {
+        BadgeIcon = Activity;
+      } else if (badge.type === "HydrationHero") {
+        BadgeIcon = Droplet;
+      }
+      return { ...badge, icon: BadgeIcon };
+    })
+  );
 
-  // Platform statistics (in a real app, these would be fetched from the blockchain)
+  // Platform statistics
   const [platformStats, setPlatformStats] = useState({
     totalTransactions: 0,
     averageFee: 0,
@@ -118,12 +78,11 @@ function VitaVerseApp() {
     if (walletConnected && window.ethereum) {
       const initializeContracts = async () => {
         try {
-          const web3Provider = new ethers.providers.Web3Provider(
-            window.ethereum
-          );
+          // Per ethers.js v6
+          const web3Provider = new ethers.BrowserProvider(window.ethereum);
           setProvider(web3Provider);
 
-          const userSigner = web3Provider.getSigner();
+          const userSigner = await web3Provider.getSigner();
           setSigner(userSigner);
 
           const yodaContract = new ethers.Contract(
@@ -141,8 +100,12 @@ function VitaVerseApp() {
           setVitaVerseNFT(nftContract);
 
           // Now that contracts are initialized, fetch data
-          fetchUserData(account);
-          fetchPlatformStats();
+          const accounts = await web3Provider.listAccounts();
+          if (accounts.length > 0) {
+            // In v6, account è un oggetto con address
+            await fetchUserData(accounts[0].address);
+            await fetchPlatformStats();
+          }
         } catch (error) {
           console.error("Error initializing contracts:", error);
           setErrorMessage(
@@ -203,9 +166,12 @@ function VitaVerseApp() {
     } else {
       // User changed account
       setAccount(accounts[0]);
+      // Reload data for the new account
+      fetchUserData(accounts[0]);
     }
   };
 
+  // Function to fetch user data from the blockchain
   // Function to fetch user data from the blockchain
   const fetchUserData = async (userAddress) => {
     if (!yodaToken || !vitaVerseNFT) return;
@@ -214,22 +180,63 @@ function VitaVerseApp() {
       setIsLoading(true);
       setErrorMessage("");
 
+      console.log("Fetching data for address:", userAddress);
+
       // 1. Get Yoda token balance
       const yodaAmount = await yodaToken.balanceOf(userAddress);
-      setYodaBalance(ethers.utils.formatUnits(yodaAmount, 18));
+      setYodaBalance(ethers.formatUnits(yodaAmount, 18));
 
       // 2. Get user health data
       try {
         const userData = await vitaVerseNFT.getHealthData(userAddress);
-        setHealthData({
-          weight: userData[0].toNumber(),
-          sleepHours: userData[1].toNumber(),
-          energyLevel: userData[2].toNumber(),
-          exercise: userData[3].toNumber(),
-          waterIntake: userData[4].toNumber(),
-          lastUpdated: userData[5].toNumber(),
-        });
+        console.log("Raw userData received:", userData);
+
+        const healthDataFromContract = {
+          weight: Number(userData[0]),
+          sleepHours: Number(userData[1]),
+          energyLevel: Number(userData[2]),
+          exercise: Number(userData[3]),
+          waterIntake: Number(userData[4]),
+          lastUpdated: Number(userData[5]),
+        };
+
+        setHealthData(healthDataFromContract);
+        console.log("Parsed health data:", healthDataFromContract);
+
+        // Utilizzando la nuova funzione getUserStats
+        try {
+          // Ottieni statistiche dettagliate dell'utente dalla nuova funzione
+          const stats = await vitaVerseNFT.getUserStats(userAddress);
+          console.log("Raw stats from getUserStats:", stats);
+
+          // Popoliamo lo stato userStats con i dati dal contratto
+          const statsFromContract = {
+            streakDays: Number(stats[0]), // streakDays
+            lastUpdateDay: Number(stats[1]), // lastUpdateDay
+            totalExercise: Number(stats[2]), // totalExercise
+            waterIntake: Number(stats[3]), // waterIntake
+            badgeCount: Number(stats[4]), // badgeCount
+            // Aggiungiamo anche queste statistiche calcolate
+            averageWaterIntake: Number(stats[3]), // stessa acqua dell'ultimo aggiornamento
+            averageSleepHours: healthDataFromContract.sleepHours / 10,
+            averageExerciseMinutes: Number(stats[2]), // stesso esercizio totale
+          };
+
+          setUserStats(statsFromContract);
+          console.log("User stats from contract:", statsFromContract);
+        } catch (error) {
+          console.log("Error fetching user stats:", error);
+          // Usa le informazioni disponibili per calcolare alcune statistiche basilari
+          setUserStats({
+            streakDays: 0, // Non abbiamo questa info senza getUserStats
+            totalUpdates: healthDataFromContract.lastUpdated > 0 ? 1 : 0,
+            averageWaterIntake: healthDataFromContract.waterIntake,
+            averageSleepHours: healthDataFromContract.sleepHours / 10,
+            averageExerciseMinutes: healthDataFromContract.exercise,
+          });
+        }
       } catch (error) {
+        console.log("Error getting health data:", error);
         console.log(
           "User has no health data registered yet, using default values."
         );
@@ -239,7 +246,8 @@ function VitaVerseApp() {
       // 3. Get the number of owned badges
       try {
         const nftCount = await vitaVerseNFT.balanceOf(userAddress);
-        setNftBalance(nftCount.toNumber());
+        // Per ethers.js v6, use Number() instead of toNumber()
+        setNftBalance(Number(nftCount));
       } catch (error) {
         console.error("Error fetching badge count:", error);
         setNftBalance(0);
@@ -251,6 +259,24 @@ function VitaVerseApp() {
         for (let i = 0; i < updatedBadges.length; i++) {
           const hasBadge = await vitaVerseNFT.hasBadge(userAddress, i);
           updatedBadges[i].earned = hasBadge;
+
+          // Fetch badge details from the contract to update the remaining badges
+          if (i < 3) {
+            // Solo per i badge predefiniti
+            try {
+              const badgeInfo = await vitaVerseNFT.badges(i);
+              updatedBadges[i].name = badgeInfo[0];
+              updatedBadges[i].description = badgeInfo[1];
+              // Per ethers.js v6, formatUnits è una funzione indipendente
+              updatedBadges[i].price = ethers.formatUnits(badgeInfo[2], 18);
+              updatedBadges[i].supply = Number(badgeInfo[3]);
+              updatedBadges[i].remaining = Number(badgeInfo[4]);
+              // badgeInfo[5] contiene badgeType che è un bytes32
+              // badgeInfo[6] contiene active che è un bool
+            } catch (error) {
+              console.error("Error fetching badge details:", error);
+            }
+          }
         }
         setAvailableBadges(updatedBadges);
         setOwnedBadges(updatedBadges.filter((badge) => badge.earned));
@@ -266,10 +292,9 @@ function VitaVerseApp() {
       setIsLoading(false);
     }
   };
-
   // Function to fetch platform statistics
   const fetchPlatformStats = async () => {
-    if (!provider) return;
+    if (!provider || !account) return;
 
     try {
       // In a real app, you might have a dedicated contract for statistics
@@ -278,43 +303,102 @@ function VitaVerseApp() {
       // For now, fetch some example data from the network
       const blockNumber = await provider.getBlockNumber();
       const block = await provider.getBlock(blockNumber);
-      const gasPrice = await provider.getGasPrice();
+      const gasPrice = await provider.getFeeData();
 
-      // Simulate some recent transactions (in a real app, you would fetch real events)
-      const mockTransactions = [
-        {
-          id: 1,
-          badgeName: "Early Bird",
-          from: account.slice(0, 6) + "..." + account.slice(-4),
-          to: "0x5d6...7e8f",
-          price: 20,
-          time: "2 hours ago",
-        },
-        {
-          id: 2,
-          badgeName: "Workout Warrior",
-          from: "0x7g8...9h0i",
-          to: account.slice(0, 6) + "..." + account.slice(-4),
-          price: 50,
-          time: "3 hours ago",
-        },
-        {
-          id: 3,
-          badgeName: "Hydration Hero",
-          from: account.slice(0, 6) + "..." + account.slice(-4),
-          to: "0x9p0...1q2r",
-          price: 30,
-          time: "5 hours ago",
-        },
-      ];
+      // Aggiungiamo la lettura degli eventi dal contratto
+      let recentTransactions = [];
+
+      // Cerca eventi BadgePurchased
+      try {
+        // Cerca solo negli ultimi 1000 blocchi per velocizzare la query
+        const filter = vitaVerseNFT.filters.BadgePurchased();
+        const events = await vitaVerseNFT.queryFilter(
+          filter,
+          blockNumber - 1000,
+          blockNumber
+        );
+
+        // Converti gli eventi in transazioni per la UI
+        if (events.length > 0) {
+          for (let i = 0; i < Math.min(events.length, 5); i++) {
+            const event = events[i];
+            const badge = availableBadges.find(
+              (b) => b.id === Number(event.args.badgeId)
+            );
+            const badgeName = badge
+              ? badge.name
+              : `Badge #${Number(event.args.badgeId)}`;
+
+            // Calcola quanto tempo fa è avvenuta la transazione
+            const eventBlock = await provider.getBlock(event.blockNumber);
+            const secondsAgo =
+              Number(block.timestamp) - Number(eventBlock.timestamp);
+            let timeAgo;
+
+            if (secondsAgo < 60) {
+              timeAgo = `${secondsAgo} sec ago`;
+            } else if (secondsAgo < 3600) {
+              timeAgo = `${Math.floor(secondsAgo / 60)} min ago`;
+            } else {
+              timeAgo = `${Math.floor(secondsAgo / 3600)} hours ago`;
+            }
+
+            recentTransactions.push({
+              id: i,
+              badgeName: badgeName,
+              from:
+                event.args.user.slice(0, 6) + "..." + event.args.user.slice(-4),
+              to:
+                VITAVERSE_NFT_ADDRESS.slice(0, 6) +
+                "..." +
+                VITAVERSE_NFT_ADDRESS.slice(-4),
+              price: ethers.formatUnits(event.args.price, 18),
+              time: timeAgo,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching badge purchase events:", error);
+      }
+
+      // Se non ci sono transazioni, usa i dati di esempio
+      if (recentTransactions.length === 0) {
+        recentTransactions = [
+          {
+            id: 1,
+            badgeName: "Early Bird",
+            from: account.slice(0, 6) + "..." + account.slice(-4),
+            to: "0x5d6...7e8f",
+            price: 20,
+            time: "2 hours ago",
+          },
+          {
+            id: 2,
+            badgeName: "Workout Warrior",
+            from: "0x7g8...9h0i",
+            to: account.slice(0, 6) + "..." + account.slice(-4),
+            price: 50,
+            time: "3 hours ago",
+          },
+          {
+            id: 3,
+            badgeName: "Hydration Hero",
+            from: account.slice(0, 6) + "..." + account.slice(-4),
+            to: "0x9p0...1q2r",
+            price: 30,
+            time: "5 hours ago",
+          },
+        ];
+      }
 
       setPlatformStats({
-        totalTransactions: 127, // Static example
+        totalTransactions: recentTransactions.length, // Dal numero di eventi
+        // Per ethers.js v6, getFeeData() restituisce un oggetto con gasPrice
         averageFee: parseFloat(
-          ethers.utils.formatUnits(gasPrice, "gwei")
+          ethers.formatUnits(gasPrice.gasPrice || 0, "gwei")
         ).toFixed(2), // Gas price in gwei
-        confirmationTime: block.timestamp > 0 ? 15 : 0, // Static example (15 seconds)
-        recentTransactions: mockTransactions,
+        confirmationTime: Number(block.timestamp) > 0 ? 15 : 0, // Static example (15 seconds)
+        recentTransactions: recentTransactions,
       });
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -347,7 +431,7 @@ function VitaVerseApp() {
       setSuccessMessage("Health data updated successfully!");
 
       // Reload user data to check if new badges were awarded
-      fetchUserData(account);
+      await fetchUserData(account);
     } catch (error) {
       console.error("Error updating data:", error);
       setErrorMessage(
@@ -382,9 +466,11 @@ function VitaVerseApp() {
 
       // Check Yoda token balance
       const balance = await yodaToken.balanceOf(account);
-      const price = ethers.utils.parseUnits(badge.price.toString(), 18);
+      // Per ethers.js v6, parseUnits è una funzione indipendente
+      const price = ethers.parseUnits(badge.price.toString(), 18);
 
-      if (balance.lt(price)) {
+      // Per ethers.js v6, non c'è lt method, usa < operator
+      if (balance < price) {
         setErrorMessage(
           `Insufficient Yoda balance. You need ${badge.price} YODA.`
         );
@@ -402,8 +488,8 @@ function VitaVerseApp() {
       setSuccessMessage(`You successfully purchased the ${badge.name} badge!`);
 
       // Reload user data
-      fetchUserData(account);
-      fetchPlatformStats();
+      await fetchUserData(account);
+      await fetchPlatformStats();
     } catch (error) {
       console.error("Error purchasing:", error);
       setErrorMessage(
@@ -413,6 +499,24 @@ function VitaVerseApp() {
       setIsLoading(false);
     }
   };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+
+    // Se l'utente naviga alla scheda Statistics, assicuriamoci che i dati siano caricati
+    if (tab === "stats" && walletConnected && account) {
+      fetchUserData(account);
+      fetchPlatformStats();
+    }
+  };
+
+  useEffect(() => {
+    // Carica i dati quando l'utente è sulla scheda Statistics e il wallet è connesso
+    if (activeTab === "stats" && walletConnected && account && vitaVerseNFT) {
+      fetchUserData(account);
+      fetchPlatformStats();
+    }
+  }, [activeTab, walletConnected, account, vitaVerseNFT]);
 
   const handleInputChange = (field, value) => {
     // Convert values for the smart contract
@@ -453,425 +557,11 @@ function VitaVerseApp() {
 
     // Cleanup
     return () => {
-      vitaVerseNFT.off("BadgeEarned", onBadgeEarned);
+      vitaVerseNFT.removeListener("BadgeEarned", onBadgeEarned);
     };
   }, [vitaVerseNFT, account]);
 
-  // Render the main dashboard
-  const renderDashboard = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-      {/* Daily metrics */}
-      <div className="bg-white rounded-xl shadow-sm p-6 w-full">
-        <div className="flex items-center mb-4 text-indigo-700">
-          <Activity size={20} className="mr-2" />
-          <h2 className="text-xl font-semibold">Daily Metrics</h2>
-        </div>
-
-        <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Weight (kg)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.1"
-                value={(healthData.weight / 10).toFixed(1)}
-                onChange={(e) => handleInputChange("weight", e.target.value)}
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sleep Hours
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.1"
-                value={(healthData.sleepHours / 10).toFixed(1)}
-                onChange={(e) =>
-                  handleInputChange("sleepHours", e.target.value)
-                }
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Energy Level (1-10)
-            </label>
-            <div className="flex items-center">
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={healthData.energyLevel}
-                onChange={(e) =>
-                  handleInputChange("energyLevel", e.target.value)
-                }
-                className="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-              />
-              <span className="ml-2 text-indigo-700 font-medium">
-                {healthData.energyLevel}
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Exercise (minutes)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={healthData.exercise}
-                onChange={(e) => handleInputChange("exercise", e.target.value)}
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Water (ml)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={healthData.waterIntake}
-                onChange={(e) =>
-                  handleInputChange("waterIntake", e.target.value)
-                }
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={saveHealthData}
-            disabled={isLoading}
-            className={`w-full py-2 px-4 rounded-lg font-medium ${
-              isLoading
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
-            }`}
-          >
-            {isLoading ? "Saving..." : "Save Data"}
-          </button>
-
-          {healthData.lastUpdated > 0 && (
-            <p className="text-sm text-gray-500 text-center">
-              Last updated:{" "}
-              {new Date(healthData.lastUpdated * 1000).toLocaleString()}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Owned badges */}
-      <div className="bg-white rounded-xl shadow-sm p-6 w-full">
-        <div className="flex items-center mb-4 text-indigo-700">
-          <Award size={20} className="mr-2" />
-          <h2 className="text-xl font-semibold">
-            Your Badges ({ownedBadges.length})
-          </h2>
-        </div>
-
-        {ownedBadges.length === 0 ? (
-          <div className="bg-gray-50 rounded-lg p-6 text-center">
-            <p className="text-gray-500">
-              You don't own any badges yet. Earn them by tracking your wellness!
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {ownedBadges.map((badge) => {
-              const BadgeIcon = badge.icon;
-              return (
-                <div key={badge.id} className="bg-indigo-50 rounded-lg p-4">
-                  <div className="flex items-center mb-3">
-                    <div className="p-2 rounded-full bg-indigo-100 text-indigo-600 mr-3">
-                      <BadgeIcon size={18} />
-                    </div>
-                    <h3 className="font-medium text-indigo-800">
-                      {badge.name}
-                    </h3>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-2">
-                    {badge.description}
-                  </p>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                      Earned
-                    </span>
-                    <span className="text-gray-500">Badge #{badge.id}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="mt-6 pt-6 border-t border-gray-100">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-medium text-gray-800">Weekly Progress</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Exercise minutes</span>
-                <span className="font-medium text-indigo-700">
-                  {healthData.exercise}/150
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-indigo-600 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (healthData.exercise / 150) * 100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Water intake</span>
-                <span className="font-medium text-indigo-700">
-                  {healthData.waterIntake}/2500 ml
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-indigo-600 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (healthData.waterIntake / 2500) * 100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Sleep quality</span>
-                <span className="font-medium text-indigo-700">
-                  {(healthData.sleepHours / 10).toFixed(1)}/8 hours
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-indigo-600 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (healthData.sleepHours / 10 / 8) * 100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Render the available badges page
-  const renderBadges = () => (
-    <div className="bg-white rounded-xl shadow-sm p-6 w-full">
-      <div className="flex items-center mb-6 text-indigo-700">
-        <Award size={20} className="mr-2" />
-        <h2 className="text-xl font-semibold">Available Badges</h2>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {availableBadges.map((badge) => {
-          const BadgeIcon = badge.icon;
-          return (
-            <div
-              key={badge.id}
-              className={`p-6 rounded-xl border ${
-                badge.earned
-                  ? "border-green-200 bg-green-50"
-                  : "border-gray-200 bg-white"
-              }`}
-            >
-              <div className="flex justify-center mb-4">
-                <div
-                  className={`rounded-full p-4 ${
-                    badge.earned
-                      ? "bg-green-100 text-green-600"
-                      : "bg-indigo-100 text-indigo-600"
-                  }`}
-                >
-                  <BadgeIcon size={32} />
-                </div>
-              </div>
-
-              <h3
-                className={`text-lg font-medium text-center ${
-                  badge.earned ? "text-green-700" : "text-gray-800"
-                }`}
-              >
-                {badge.name}
-              </h3>
-
-              <p className="text-gray-600 text-sm text-center mt-2 mb-4">
-                {badge.description}
-              </p>
-
-              <div className="flex justify-between items-center text-sm">
-                <span className="flex items-center text-gray-600">
-                  <Tag size={14} className="mr-1" />
-                  {badge.price} YODA
-                </span>
-                <span className="text-gray-500">
-                  {badge.remaining}/{badge.supply}
-                </span>
-              </div>
-
-              <div className="mt-4">
-                {badge.earned ? (
-                  <div className="bg-green-100 text-green-700 py-2 px-4 rounded-lg text-center font-medium">
-                    Badge Earned
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => purchaseBadge(badge.id)}
-                    disabled={isLoading || badge.remaining === 0}
-                    className={`w-full py-2 px-4 rounded-lg font-medium ${
-                      isLoading || badge.remaining === 0
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "bg-indigo-600 text-white hover:bg-indigo-700"
-                    }`}
-                  >
-                    {badge.remaining === 0 ? "Sold Out" : "Purchase"}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-8 bg-indigo-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-indigo-700 mb-3">
-          How to Earn Badges
-        </h3>
-        <p className="text-gray-700 mb-4">
-          There are two ways to earn VitaVerse badges:
-        </p>
-        <ul className="list-disc pl-5 space-y-2 text-gray-700">
-          <li>
-            <span className="font-medium">Direct purchase:</span> You can
-            purchase any badge with your YODA tokens.
-          </li>
-          <li>
-            <span className="font-medium">Achieve goals:</span> Some badges can be
-            earned automatically when you reach certain wellness goals. These badges
-            will also reward you with YODA!
-          </li>
-        </ul>
-      </div>
-    </div>
-  );
-
-  const renderStats = () => (
-    <div className="bg-white rounded-xl shadow-sm p-6 w-full">
-      <div className="flex items-center mb-6 text-indigo-700">
-        <TrendingUp size={20} className="mr-2" />
-        <h2 className="text-xl font-semibold">Platform Statistics</h2>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-indigo-50 rounded-lg p-4">
-          <h3 className="text-indigo-800 font-medium mb-2">
-            Total Transactions
-          </h3>
-          <p className="text-2xl font-bold text-indigo-700">
-            {platformStats.totalTransactions}
-          </p>
-        </div>
-
-        <div className="bg-indigo-50 rounded-lg p-4">
-          <h3 className="text-indigo-800 font-medium mb-2">
-            Average Fee (Gwei)
-          </h3>
-          <p className="text-2xl font-bold text-indigo-700">
-            {platformStats.averageFee}
-          </p>
-        </div>
-
-        <div className="bg-indigo-50 rounded-lg p-4">
-          <h3 className="text-indigo-800 font-medium mb-2">
-            Confirmation Time (sec)
-          </h3>
-          <p className="text-2xl font-bold text-indigo-700">
-            {platformStats.confirmationTime}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-indigo-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-indigo-800 mb-4">
-          Recent Transactions
-        </h3>
-
-        <div className="space-y-4">
-          {platformStats.recentTransactions.map((tx) => (
-            <div
-              key={tx.id}
-              className="bg-white rounded-lg p-3 flex items-center justify-between"
-            >
-              <div>
-                <p className="font-medium text-gray-800">
-                  Badge: {tx.badgeName}
-                </p>
-                <p className="text-sm text-gray-500">
-                  <span className="font-mono">{tx.from}</span> →{" "}
-                  <span className="font-mono">{tx.to}</span>
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-indigo-700">{tx.price} YODA</p>
-                <p className="text-xs text-gray-500">{tx.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-8 bg-amber-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-amber-700 mb-3">
-          Performance Metrics
-        </h3>
-        <p className="text-gray-700 mb-4">
-          As a participant in the StarPeace P2P Marketplace, the following metrics
-          will be evaluated:
-        </p>
-        <ul className="list-disc pl-5 space-y-2 text-gray-700">
-          <li>Badge popularity (number of purchases)</li>
-          <li>Code organization and deployment techniques</li>
-          <li>Ease and intuitiveness of the user interface</li>
-          <li>Number of transactions sent and received</li>
-          <li>Average transaction fee</li>
-          <li>Transaction rate</li>
-        </ul>
-      </div>
-    </div>
-  );
-
+  // Resto del componente...
   return (
     <div className="min-h-screen bg-indigo-50/30">
       <div className="container mx-auto px-4 py-6">
@@ -971,7 +661,7 @@ function VitaVerseApp() {
             {/* Navigation Tabs */}
             <div className="flex border-b border-gray-200 mb-6">
               <button
-                onClick={() => setActiveTab("dashboard")}
+                onClick={() => handleTabChange("dashboard")}
                 className={`py-3 px-6 font-medium ${
                   activeTab === "dashboard"
                     ? "text-indigo-600 border-b-2 border-indigo-600"
@@ -981,7 +671,7 @@ function VitaVerseApp() {
                 Dashboard
               </button>
               <button
-                onClick={() => setActiveTab("badges")}
+                onClick={() => handleTabChange("badges")}
                 className={`py-3 px-6 font-medium ${
                   activeTab === "badges"
                     ? "text-indigo-600 border-b-2 border-indigo-600"
@@ -991,7 +681,7 @@ function VitaVerseApp() {
                 NFT Badges
               </button>
               <button
-                onClick={() => setActiveTab("stats")}
+                onClick={() => handleTabChange("stats")}
                 className={`py-3 px-6 font-medium ${
                   activeTab === "stats"
                     ? "text-indigo-600 border-b-2 border-indigo-600"
@@ -1000,12 +690,46 @@ function VitaVerseApp() {
               >
                 Statistics
               </button>
+              <button
+                onClick={() => handleTabChange("leaderboard")}
+                className={`py-3 px-6 font-medium ${
+                  activeTab === "leaderboard"
+                    ? "text-indigo-600 border-b-2 border-indigo-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Leaderboard
+              </button>
             </div>
 
             {/* Main content based on active tab */}
-            {activeTab === "dashboard" && renderDashboard()}
-            {activeTab === "badges" && renderBadges()}
-            {activeTab === "stats" && renderStats()}
+            {activeTab === "dashboard" && (
+              <Dashboard
+                healthData={healthData}
+                handleInputChange={handleInputChange}
+                saveHealthData={saveHealthData}
+                isLoading={isLoading}
+                ownedBadges={ownedBadges}
+              />
+            )}
+            {activeTab === "badges" && (
+              <Badges
+                availableBadges={availableBadges}
+                purchaseBadge={purchaseBadge}
+                isLoading={isLoading}
+              />
+            )}
+            {activeTab === "stats" && (
+              <Statistics
+                platformStats={platformStats}
+                userStats={userStats}
+                healthData={healthData}
+                ownedBadges={ownedBadges}
+              />
+            )}
+            {activeTab === "leaderboard" && (
+              <Leaderboard vitaVerseNFT={vitaVerseNFT} account={account} />
+            )}
           </>
         )}
       </div>
