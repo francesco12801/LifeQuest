@@ -60,10 +60,10 @@ export const defaultBadges = [
   },
 ];
 
-// Dati di salute predefiniti
+// predefined health data
 export const defaultHealthData = {
-  weight: 700, // Stored as 70.0 kg * 10
-  sleepHours: 75, // Stored as 7.5 hours * 10
+  weight: 700, 
+  sleepHours: 75, 
   energyLevel: 8,
   exercise: 30,
   waterIntake: 2000,
