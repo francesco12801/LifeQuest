@@ -1,0 +1,348 @@
+/* Leaderboard.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+.leaderboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  font-family: 'Poppins', sans-serif;
+  color: #333;
+}
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.leaderboard-header h1 {
+  color: #2E7D32;
+  font-size: 2rem;
+  margin: 0;
+}
+
+.leaderboard-filters {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-group label {
+  font-size: 0.9rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.filter-group select {
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.3s;
+  font-family: 'Poppins', sans-serif;
+}
+
+.filter-group select:focus {
+  border-color: #4CAF50;
+  outline: none;
+}
+
+.user-rank-card {
+  background: linear-gradient(to right, #e8f5e9, #c8e6c9);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.user-rank-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-rank-label {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #2E7D32;
+}
+
+.user-rank-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1B5E20;
+  background-color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.user-rank-message {
+  font-size: 1rem;
+  color: #2E7D32;
+  margin: 0;
+  flex: 1;
+  text-align: right;
+}
+
+.leaderboard-table-container {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.leaderboard-table th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.rank-column {
+  width: 80px;
+  text-align: center;
+}
+
+.user-column {
+  width: 250px;
+}
+
+.top-rank {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.rank-1 {
+  color: #F57F17;
+}
+
+.rank-2 {
+  color: #757575;
+}
+
+.rank-3 {
+  color: #8D6E63;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.user-address {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.highlight-column {
+  background-color: #f1f8e9;
+  font-weight: 500;
+}
+
+.score-bar-container {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  background-color: #f1f1f1;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.score-bar {
+  height: 100%;
+  background: linear-gradient(to right, #81C784, #4CAF50);
+  border-radius: 12px;
+}
+
+.score-value {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #333;
+}
+
+.badge-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.badge-icon {
+  font-size: 1.2rem;
+}
+
+.current-user-row {
+  background-color: #f1f8e9;
+}
+
+.current-user-row:hover {
+  background-color: #e8f5e9;
+}
+
+.leaderboard-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.leaderboard-info {
+  background-color: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.leaderboard-info h2 {
+  color: #2E7D32;
+  font-size: 1.4rem;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.leaderboard-info p {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+.leaderboard-info p:last-child {
+  margin-bottom: 0;
+}
+
+.no-data-message {
+  padding: 40px 20px;
+  text-align: center;
+  color: #666;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+}
+
+.spinner {
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #4CAF50;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .leaderboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .filter-group {
+    width: 100%;
+  }
+  
+  .filter-group select {
+    flex: 1;
+  }
+  
+  .user-rank-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .user-rank-message {
+    text-align: left;
+  }
+  
+  .rank-column {
+    width: 40px;
+  }
+  
+  .user-column {
+    width: auto;
+  }
+  
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 12px 8px;
+  }
+  
+  .score-bar-container {
+    max-width: 120px;
+  }
+  
+  /* Rende la tabella scrollabile orizzontalmente su mobile */
+  .leaderboard-table-container {
+    overflow-x: auto;
+  }
+}

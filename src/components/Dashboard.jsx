@@ -1,239 +1,319 @@
-import React from "react";
-import { Activity, Award } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import "./style/Dashboard.css";
 
-const Dashboard = ({ 
-  healthData, 
-  handleInputChange, 
-  saveHealthData, 
-  isLoading,
-  ownedBadges 
-}) => {
+// Importa i componenti per le varie sezioni
+import Statistics from "./Statistics.jsx";
+import Leaderboard from "./Leaderboard.jsx";
+import Badges from "./Badges.jsx";
+
+// Importa l'ABI e l'indirizzo del contratto
+import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
+import { CONTRACT_ADDRESS } from "./constants/constants.js";
+
+const Dashboard = () => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [account, setAccount] = useState("");
+  const [provider, setProvider] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [connecting, setConnecting] = useState(false);
+  const [activeTab, setActiveTab] = useState("welcome"); 
+
+  // Controlla se MetaMask è installato all'avvio
+  useEffect(() => {
+    const checkIfMetaMaskInstalled = async () => {
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        setProvider(provider);
+
+        // Check if already connected
+        // Modifica in Dashboard.jsx, nella funzione checkIfMetaMaskInstalled
+        try {
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setAccount(accounts[0]);
+            setIsConnected(true);
+
+            // Verifica che l'ABI sia corretto prima di inizializzare il contratto
+            console.log("ABI:", VitaVerseNFTABI); // Aggiungi questo log per verificare l'ABI
+
+            // Se VitaVerseNFTABI è un oggetto con una proprietà 'abi', usa quello
+            const abiToUse = VitaVerseNFTABI.abi
+              ? VitaVerseNFTABI.abi
+              : VitaVerseNFTABI;
+
+            // Inizializza il contratto solo se l'ABI è valido
+            if (Array.isArray(abiToUse)) {
+              const contract = new ethers.Contract(
+                CONTRACT_ADDRESS,
+                abiToUse,
+                provider.getSigner()
+              );
+              setContract(contract);
+            } else {
+              console.error("ABI non valido:", abiToUse);
+            }
+
+            // Se l'utente è già connesso, mostra le statistiche
+            setActiveTab("statistics");
+          }
+        } catch (error) {
+          console.error("Error checking connection:", error);
+        }
+      }
+    };
+
+    checkIfMetaMaskInstalled();
+  }, []);
+
+  // Gestisci l'evento di cambio account
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", (accounts) => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          setIsConnected(true);
+
+          // Aggiorna il contratto con il nuovo account
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const contract = new ethers.Contract(
+            CONTRACT_ADDRESS,
+            VitaVerseNFTABI.abi,
+            provider.getSigner()
+          );
+          setProvider(provider);
+          setContract(contract);
+        } else {
+          // L'utente ha disconnesso il suo wallet
+          setAccount("");
+          setIsConnected(false);
+          setContract(null);
+          setActiveTab("welcome");
+        }
+      });
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener("accountsChanged", () => {});
+      }
+    };
+  }, []);
+
+  // Funzione per connettersi a MetaMask
+  const connectToMetaMask = async () => {
+    if (window.ethereum) {
+      try {
+        setConnecting(true);
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
+
+        setAccount(accounts[0]);
+        setIsConnected(true);
+
+        // Initialize contract
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contract = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          VitaVerseNFTABI.abi,
+          provider.getSigner()
+        );
+        setProvider(provider);
+        setContract(contract);
+        setConnecting(false);
+
+        // Passa alla pagina delle statistiche dopo la connessione
+        setActiveTab("statistics");
+      } catch (error) {
+        console.error("Error connecting to MetaMask:", error);
+        setConnecting(false);
+      }
+    } else {
+      alert(
+        "MetaMask is not installed. Please install it to use this application."
+      );
+    }
+  };
+
+  // Mostra il contenuto appropriato in base al tab attivo
+  const renderContent = () => {
+    if (!isConnected) {
+      return (
+        <div className="intro-section">
+          <h2>Transform Your Health Journey with Blockchain</h2>
+          <p>
+            VitaVerse is a revolutionary platform that combines blockchain
+            technology with health tracking, rewarding you for maintaining a
+            healthy lifestyle with exclusive NFT badges and YODA tokens.
+          </p>
+          <p>
+            Track your exercise, hydration, sleep, and energy levels. Earn
+            badges for your achievements and climb the leaderboard to showcase
+            your commitment to wellness.
+          </p>
+          <div className="features">
+            <div className="feature">
+              <h3>Track Progress</h3>
+              <p>Record and monitor your daily health metrics</p>
+            </div>
+            <div className="feature">
+              <h3>Earn Rewards</h3>
+              <p>Receive NFT badges and YODA tokens for achievements</p>
+            </div>
+            <div className="feature">
+              <h3>Build Streaks</h3>
+              <p>Maintain consistency and unlock higher tier badges</p>
+            </div>
+          </div>
+
+          <div className="connect-section">
+            <button
+              className={`connect-button ${connecting ? "connecting" : ""}`}
+              onClick={connectToMetaMask}
+              disabled={connecting}
+            >
+              {connecting ? (
+                <>
+                  <span className="button-spinner"></span>
+                  Connecting...
+                </>
+              ) : (
+                "Connect to MetaMask"
+              )}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Contenuto per utenti connessi
+    switch (activeTab) {
+      case "statistics":
+        return <Statistics account={account} contract={contract} />;
+      case "leaderboard":
+        return <Leaderboard account={account} contract={contract} />;
+      case "badges":
+        return <Badges account={account} contract={contract} />;
+      default:
+        return (
+          <div className="welcome-connected">
+            <h2>Welcome to VitaVerse!</h2>
+            <p>
+              You are now connected. Start tracking your health data and earn
+              rewards!
+            </p>
+            <button
+              className="start-button"
+              onClick={() => setActiveTab("statistics")}
+            >
+              Get Started
+            </button>
+          </div>
+        );
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-      {/* Daily metrics */}
-      <div className="bg-white rounded-xl shadow-sm p-6 w-full">
-        <div className="flex items-center mb-4 text-indigo-700">
-          <Activity size={20} className="mr-2" />
-          <h2 className="text-xl font-semibold">Daily Metrics</h2>
+    <div className="app-container">
+      <header className="app-header">
+        <div className="header-logo">
+          <div className="small-logo">
+            <svg
+              viewBox="0 0 200 200"
+              xmlns="http://www.w3.org/2000/svg"
+              width="40"
+              height="40"
+            >
+              <circle cx="100" cy="100" r="80" fill="#4CAF50" />
+              <path d="M100 40 L140 100 L100 160 L60 100 Z" fill="#2E7D32" />
+              <circle cx="100" cy="100" r="30" fill="#81C784" />
+              <path d="M70 90 Q100 60 130 90 Q100 120 70 90" fill="#1B5E20" />
+            </svg>
+          </div>
+          <h1 className="app-title">VitaVerse</h1>
         </div>
 
-        <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Weight (kg)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.1"
-                value={(healthData.weight / 10).toFixed(1)}
-                onChange={(e) => handleInputChange("weight", e.target.value)}
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
+        {isConnected && (
+          <>
+            <nav className="app-nav">
+              <ul>
+                <li>
+                  <button
+                    className={activeTab === "statistics" ? "active" : ""}
+                    onClick={() => setActiveTab("statistics")}
+                  >
+                    <span className="nav-icon">📊</span>
+                    <span className="nav-text">Statistics</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    className={activeTab === "leaderboard" ? "active" : ""}
+                    onClick={() => setActiveTab("leaderboard")}
+                  >
+                    <span className="nav-icon">🏆</span>
+                    <span className="nav-text">Leaderboard</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    className={activeTab === "badges" ? "active" : ""}
+                    onClick={() => setActiveTab("badges")}
+                  >
+                    <span className="nav-icon">🏅</span>
+                    <span className="nav-text">Badges</span>
+                  </button>
+                </li>
+              </ul>
+            </nav>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sleep Hours
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                step="0.1"
-                value={(healthData.sleepHours / 10).toFixed(1)}
-                onChange={(e) =>
-                  handleInputChange("sleepHours", e.target.value)
-                }
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Energy Level (1-10)
-            </label>
-            <div className="flex items-center">
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={healthData.energyLevel}
-                onChange={(e) =>
-                  handleInputChange("energyLevel", e.target.value)
-                }
-                className="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-              />
-              <span className="ml-2 text-indigo-700 font-medium">
-                {healthData.energyLevel}
+            <div className="account-info">
+              <span>
+                {account.substring(0, 6)}...
+                {account.substring(account.length - 4)}
               </span>
             </div>
-          </div>
+          </>
+        )}
+      </header>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Exercise (minutes)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={healthData.exercise}
-                onChange={(e) => handleInputChange("exercise", e.target.value)}
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Water (ml)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                value={healthData.waterIntake}
-                onChange={(e) =>
-                  handleInputChange("waterIntake", e.target.value)
-                }
-                className="w-full rounded-md border border-gray-200 p-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 outline-none transition"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={saveHealthData}
-            disabled={isLoading}
-            className={`w-full py-2 px-4 rounded-lg font-medium ${
-              isLoading
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
-            }`}
-          >
-            {isLoading ? "Saving..." : "Save Data"}
-          </button>
-
-          {healthData.lastUpdated > 0 && (
-            <p className="text-sm text-gray-500 text-center">
-              Last updated:{" "}
-              {new Date(healthData.lastUpdated * 1000).toLocaleString()}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Owned badges */}
-      <div className="bg-white rounded-xl shadow-sm p-6 w-full">
-        <div className="flex items-center mb-4 text-indigo-700">
-          <Award size={20} className="mr-2" />
-          <h2 className="text-xl font-semibold">
-            Your Badges ({ownedBadges.length})
-          </h2>
-        </div>
-
-        {ownedBadges.length === 0 ? (
-          <div className="bg-gray-50 rounded-lg p-6 text-center">
-            <p className="text-gray-500">
-              You don't own any badges yet. Earn them by tracking your wellness!
-            </p>
-          </div>
+      <main className="app-content">
+        {isConnected && activeTab !== "welcome" ? (
+          <div className="connected-content">{renderContent()}</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {ownedBadges.map((badge) => {
-              const BadgeIcon = badge.icon;
-              return (
-                <div key={badge.id} className="bg-indigo-50 rounded-lg p-4">
-                  <div className="flex items-center mb-3">
-                    <div className="p-2 rounded-full bg-indigo-100 text-indigo-600 mr-3">
-                      <BadgeIcon size={18} />
-                    </div>
-                    <h3 className="font-medium text-indigo-800">
-                      {badge.name}
-                    </h3>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-2">
-                    {badge.description}
-                  </p>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                      Earned
-                    </span>
-                    <span className="text-gray-500">Badge #{badge.id}</span>
-                  </div>
+          <div className="dashboard-container">
+            <div className="dashboard-content">
+              <div className="logo-container">
+                <div className="logo">
+                  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="100" cy="100" r="80" fill="#4CAF50" />
+                    <path
+                      d="M100 40 L140 100 L100 160 L60 100 Z"
+                      fill="#2E7D32"
+                    />
+                    <circle cx="100" cy="100" r="30" fill="#81C784" />
+                    <path
+                      d="M70 90 Q100 60 130 90 Q100 120 70 90"
+                      fill="#1B5E20"
+                    />
+                  </svg>
                 </div>
-              );
-            })}
+                <h1 className="app-title">VitaVerse</h1>
+              </div>
+
+              {renderContent()}
+            </div>
           </div>
         )}
+      </main>
 
-        <div className="mt-6 pt-6 border-t border-gray-100">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-medium text-gray-800">Weekly Progress</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Exercise minutes</span>
-                <span className="font-medium text-indigo-700">
-                  {healthData.exercise}/150
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-indigo-600 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (healthData.exercise / 150) * 100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Water intake</span>
-                <span className="font-medium text-indigo-700">
-                  {healthData.waterIntake}/2500 ml
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-indigo-600 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (healthData.waterIntake / 2500) * 100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Sleep quality</span>
-                <span className="font-medium text-indigo-700">
-                  {(healthData.sleepHours / 10).toFixed(1)}/8 hours
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-indigo-600 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (healthData.sleepHours / 10 / 8) * 100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <footer className="app-footer">
+        <p>
+          &copy; {new Date().getFullYear()} VitaVerse - Blockchain Health
+          Tracking Platform
+        </p>
+      </footer>
     </div>
   );
 };
