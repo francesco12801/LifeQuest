@@ -27,9 +27,7 @@ const Badges = () => {
             setAccount(accounts[0]);
 
             // Usa un approccio più sicuro per accedere all'ABI
-            const abiToUse = VitaVerseNFTABI.abi
-              ? VitaVerseNFTABI.abi
-              : VitaVerseNFTABI;
+            const abiToUse = VitaVerseNFTABI.abi ? VitaVerseNFTABI.abi : VitaVerseNFTABI;
 
             // Inizializza il contratto solo se l'ABI è valido
             if (Array.isArray(abiToUse)) {
