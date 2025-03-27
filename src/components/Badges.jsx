@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import "./style/Badges.css";
-
-// Importa l'ABI e l'indirizzo del contratto (sostituisci con i valori reali)
 import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
 import { CONTRACT_ADDRESS } from "./constants/constants.js";
 
@@ -18,7 +16,6 @@ const Badges = () => {
   useEffect(() => {
     const initialize = async () => {
       if (window.ethereum) {
-        // In Badges.jsx, nella funzione initialize
         try {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
           const accounts = await provider.listAccounts();
@@ -26,10 +23,10 @@ const Badges = () => {
           if (accounts.length > 0) {
             setAccount(accounts[0]);
 
-            // Usa un approccio più sicuro per accedere all'ABI
+    
             const abiToUse = VitaVerseNFTABI.abi ? VitaVerseNFTABI.abi : VitaVerseNFTABI;
 
-            // Inizializza il contratto solo se l'ABI è valido
+            // Double check for the error 
             if (Array.isArray(abiToUse)) {
               const contract = new ethers.Contract(
                 CONTRACT_ADDRESS,
@@ -38,7 +35,7 @@ const Badges = () => {
               );
               setContract(contract);
 
-              // Carica i dati dei badge
+             
               await loadBadgesData(contract, accounts[0]);
             } else {
               console.error("ABI non valido:", abiToUse);
@@ -61,51 +58,43 @@ const Badges = () => {
     initialize();
   }, []);
 
-  // Carica i dati dei badge
+  // We need badges data to be loaded before we can display them
+
   const loadBadgesData = async (contract, userAccount) => {
     try {
-      // Ottieni il numero di badge disponibili dal contatore
-      const tokenIds = await contract.totalSupply();
-      const totalBadges = parseInt(tokenIds.toString());
-
-      // Ottieni i dettagli di ogni badge
+      // contract logic: 9 badges, each with a different type and reward  
       const badgesData = [];
       const userBadgesStatus = {};
+      // the idea is to get all the badges(REMEBER THE THRESHOLD) and then check if the user has them
+      for (let i = 0; i < 9; i++) {
+        try {
+          const badgeDetails = await contract.getBadgeDetails(i);          
+          const hasBadge = await contract.hasBadge(userAccount, i);
+          userBadgesStatus[i] = hasBadge;
+          const badgeType = badgeDetails.badgeType;
+          const threshold = await contract.achievementThresholds(badgeType);
+          const reward = await contract.badgeRewards(badgeType);
+          const badgeTypeText = getBadgeTypeAndUnit(badgeDetails.name);
+          const badge = {
+            id: i,
+            name: badgeDetails.name,
+            description: badgeDetails.description,
+            supply: parseInt(badgeDetails.supply),
+            remaining: parseInt(badgeDetails.remaining),
+            active: badgeDetails.active,
+            hasNextLevel: badgeDetails.hasNextLevel,
+            nextBadgeId: parseInt(badgeDetails.nextBadgeId),
+            threshold: parseInt(threshold),
+            thresholdUnit: badgeTypeText.unit,
+            badgeType: badgeTypeText.type,
+            reward: ethers.utils.formatEther(reward), 
+            image: getBadgeImage(badgeDetails.name),
+          };
 
-      // Supporta fino a 20 badge
-      const badgeLimit = Math.min(totalBadges, 20);
-
-      for (let i = 0; i < badgeLimit; i++) {
-        // Ottieni i dettagli del badge usando la funzione getBadgeDetails
-        const badgeDetails = await contract.getBadgeDetails(i);
-
-        // Verifica se l'utente possiede questo badge
-        const hasBadge = await contract.hasBadge(userAccount, i);
-        userBadgesStatus[i] = hasBadge;
-
-        // Ottieni la soglia di achievement per questo badge
-        const badgeType = badgeDetails.badgeType;
-        const threshold = await contract.achievementThresholds(badgeType);
-
-        // Ottieni la ricompensa in token per questo badge
-        const reward = await contract.badgeRewards(badgeType);
-
-        // Crea l'oggetto badge con tutti i dati
-        const badge = {
-          id: i,
-          name: badgeDetails.name,
-          description: badgeDetails.description,
-          supply: parseInt(badgeDetails.supply),
-          remaining: parseInt(badgeDetails.remaining),
-          active: badgeDetails.active,
-          hasNextLevel: badgeDetails.hasNextLevel,
-          nextBadgeId: parseInt(badgeDetails.nextBadgeId),
-          threshold: parseInt(threshold),
-          reward: ethers.utils.formatEther(reward), // Converti da wei a ether
-          image: getBadgeImage(badgeDetails.name),
-        };
-
-        badgesData.push(badge);
+          badgesData.push(badge);
+        } catch (error) {
+          console.error(`Error loading badge ${i}:`, error);
+        }
       }
 
       setBadges(badgesData);
@@ -117,10 +106,21 @@ const Badges = () => {
     }
   };
 
-  // Funzione per generare un'immagine placeholder per il badge
+  // function to get badge ttype 
+  const getBadgeTypeAndUnit = (name) => {
+    if (name.includes("Early Bird")) {
+      return { type: "Early Bird", unit: "consecutive days" };
+    } else if (name.includes("Workout Warrior")) {
+      return { type: "Workout Warrior", unit: "minutes" };
+    } else if (name.includes("Hydration Hero")) {
+      return { type: "Hydration Hero", unit: "days above threshold" };
+    } else {
+      return { type: "Achievement", unit: "achievement points" };
+    }
+  };
+
+  // placeholder, in my final version i should use 
   const getBadgeImage = (name) => {
-    // In un'implementazione reale, avresti immagini vere per i badge
-    // Per ora, generiamo colori in base al nome del badge
     let backgroundColor, iconText;
 
     if (name.includes("Early Bird")) {
@@ -136,18 +136,15 @@ const Badges = () => {
       backgroundColor = "#9C27B0";
       iconText = "🏅";
     }
-
-    // Aggiungi sfumature in base al livello
     if (name.includes("Master")) {
       backgroundColor = `linear-gradient(135deg, ${backgroundColor}, #FFD700)`;
     } else if (name.includes("II")) {
       backgroundColor = `linear-gradient(135deg, ${backgroundColor}, #C0C0C0)`;
     }
-
     return { backgroundColor, iconText };
   };
 
-  // Filtra i badge in base alla selezione corrente
+  // filtering  and manage filter 
   const getFilteredBadges = () => {
     switch (filter) {
       case "earned":
@@ -161,23 +158,18 @@ const Badges = () => {
     }
   };
 
-  // Gestisci il cambio di filtro
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
   };
-
-  // Mostra i badge in gruppi ordinati per tipo
+ 
   const groupBadgesByType = () => {
     const filteredBadges = getFilteredBadges();
 
-    // Raggruppa i badge per categoria (prefisso del nome)
+   
     const groups = {};
 
     filteredBadges.forEach((badge) => {
-      // Determina il tipo di badge dal nome
-      const nameParts = badge.name.split(" ");
-      // Rimuovi numeri romani o 'Master' per ottenere il tipo base
-      const baseType = nameParts.slice(0, -1).join(" ");
+      const baseType = badge.badgeType;
 
       if (!groups[baseType]) {
         groups[baseType] = [];
@@ -186,10 +178,9 @@ const Badges = () => {
       groups[baseType].push(badge);
     });
 
-    // Ordina i badge all'interno di ogni gruppo per livello
     Object.keys(groups).forEach((groupKey) => {
       groups[groupKey].sort((a, b) => {
-        // Determina il livello del badge
+        
         const getLevel = (name) => {
           if (name.includes("Master")) return 3;
           if (name.includes("II")) return 2;
@@ -285,10 +276,7 @@ const Badges = () => {
                         <div className="badge-requirement">
                           <span className="badge-label">Requirement:</span>
                           <span className="badge-value">
-                            {badge.threshold}{" "}
-                            {badge.name.includes("Workout")
-                              ? "minutes"
-                              : "days"}
+                            {badge.threshold} {badge.thresholdUnit}
                           </span>
                         </div>
                         <div className="badge-reward">
@@ -334,8 +322,7 @@ const Badges = () => {
         ) : (
           <div className="no-badges-message">
             <p>
-              No badges match your current filter. Try changing the filter to
-              see more badges.
+              No badges match your current filter.
             </p>
           </div>
         )}
@@ -350,9 +337,8 @@ const Badges = () => {
           exercise minutes, or hydration levels.
         </p>
         <p>
-          Each badge comes with a YODA token reward, and earning higher-tier
-          badges unlocks access to more exclusive badges with greater rewards.
-          Keep up your healthy habits to collect them all!
+          Each badge comes with a YODA token reward. 
+          Keep up your healthy habits to collect them all! 😎
         </p>
       </div>
     </div>

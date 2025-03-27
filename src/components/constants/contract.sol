@@ -6,28 +6,25 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/**
- * @title VitaVerseNFT
- * @dev NFT contract for health tracking and badge achievements
- */
+
 contract VitaVerseNFT is ERC721Enumerable, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
-    // YodaToken contract reference
+    // YodaToken contract reference, supposing that i have to insert the address of the token given in class 
     IERC20 public yodaToken;
 
     // Badge structure
     struct Badge {
         string name;
         string description;
-        uint256 price; // Mantenuto per compatibilità, ma non utilizzato per acquisti
+        uint256 price; // it's not useful for the moment but maybe in the future i can use it 
         uint256 supply;
         uint256 remaining;
         bytes32 badgeType;
         bool active;
-        uint256 nextBadgeId; // ID del badge di livello successivo
-        bool hasNextLevel; // Flag per indicare se esiste un livello successivo
+        uint256 nextBadgeId; 
+        bool hasNextLevel; 
     }
 
     // Daily health data structure
@@ -753,7 +750,5 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
 
         emit BadgeEarned(_user, _badgeId, badge.name);
     }
-
-    
     
 }
