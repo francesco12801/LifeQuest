@@ -18,7 +18,7 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
     struct Badge {
         string name;
         string description;
-        uint256 price; // it's not useful for the moment but maybe in the future i can use it 
+        uint256 price; // it's not useful for the moment but maybe in the future i can use it to get money. 
         uint256 supply;
         uint256 remaining;
         bytes32 badgeType;

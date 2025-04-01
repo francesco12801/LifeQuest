@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import "./style/Badges.css";
 import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
-import { CONTRACT_ADDRESS } from "./constants/constants.js";
+import { CONTRACT_ADDRESS } from "./constants/constants.jsx";
 
 const Badges = () => {
   const [account, setAccount] = useState("");

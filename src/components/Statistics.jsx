@@ -16,7 +16,7 @@ import "./style/Statistics.css";
 
 // Importa l'ABI e l'indirizzo del contratto (sostituisci con i valori reali)
 import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
-import { CONTRACT_ADDRESS } from "./constants/constants.js";
+import { CONTRACT_ADDRESS } from "./constants/constants.jsx";
 
 const Statistics = () => {
   const [account, setAccount] = useState("");

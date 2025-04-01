@@ -5,8 +5,8 @@ import Statistics from "./Statistics.jsx";
 import Leaderboard from "./Leaderboard.jsx";
 import Badges from "./Badges.jsx";
 import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
-import { CONTRACT_ADDRESS } from "./constants/constants.js";
-import { VitaVerseLogo } from "./constants/constants.js";
+import { CONTRACT_ADDRESS } from "./constants/constants.jsx";
+import { VitaVerseLogo } from "./constants/constants.jsx";
 
 
 const Dashboard = () => {
