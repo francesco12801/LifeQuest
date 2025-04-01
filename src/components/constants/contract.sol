@@ -326,6 +326,7 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         emit BadgeEarned(_user, _badgeId, badge.name);
     }
 
+    // the main idea is to create a pool of yoda tokens that can be used to reward the users (obv only I can do that)
     function withdrawYodaTokens(uint256 _amount) external onlyOwner {
         require(yodaToken.transfer(owner(), _amount), "Transfer failed");
     }
