@@ -59,6 +59,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
     mapping(address => bool) public isActiveUser;
 
     // Events
+    // i do not need now these events but i will need them to implement my social features. 
+    // IDEA REMEMBER: notify all the users when some friend of them get a badge
     event HealthDataUpdated(
         address indexed user,
         uint256 weight,
