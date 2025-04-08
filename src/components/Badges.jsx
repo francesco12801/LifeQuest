@@ -12,7 +12,7 @@ const Badges = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); 
 
-  // Inizializza il contratto e carica i dati
+  // i need this function to get the badges data from the contract and connect to the wallet
   useEffect(() => {
     const initialize = async () => {
       if (window.ethereum) {
@@ -90,7 +90,7 @@ const Badges = () => {
             reward: ethers.utils.formatEther(reward), 
             image: getBadgeImage(badgeDetails.name),
           };
-
+          // i created a new badge object and insert it in an array
           badgesData.push(badge);
         } catch (error) {
           console.error(`Error loading badge ${i}:`, error);
@@ -122,7 +122,6 @@ const Badges = () => {
   // placeholder, in my final version i should use 
   const getBadgeImage = (name) => {
     let backgroundColor, iconText;
-
     if (name.includes("Early Bird")) {
       backgroundColor = "#FFC107";
       iconText = "🌅";
@@ -144,7 +143,7 @@ const Badges = () => {
     return { backgroundColor, iconText };
   };
 
-  // filtering  and manage filter 
+  // filtering and manage filter 
   const getFilteredBadges = () => {
     switch (filter) {
       case "earned":
@@ -164,13 +163,9 @@ const Badges = () => {
  
   const groupBadgesByType = () => {
     const filteredBadges = getFilteredBadges();
-
-   
     const groups = {};
-
     filteredBadges.forEach((badge) => {
       const baseType = badge.badgeType;
-
       if (!groups[baseType]) {
         groups[baseType] = [];
       }

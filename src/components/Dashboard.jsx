@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import "./style/Dashboard.css";
@@ -5,9 +6,7 @@ import Statistics from "./Statistics.jsx";
 import Leaderboard from "./Leaderboard.jsx";
 import Badges from "./Badges.jsx";
 import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
-import { CONTRACT_ADDRESS } from "./constants/constants.jsx";
-import { VitaVerseLogo } from "./constants/constants.jsx";
-
+import { CONTRACT_ADDRESS, VitaVerseLogo } from "./constants/constants.jsx";
 
 const Dashboard = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -17,115 +16,115 @@ const Dashboard = () => {
   const [connecting, setConnecting] = useState(false);
   const [activeTab, setActiveTab] = useState("welcome");
 
-  // Funzione di utilità per inizializzare il contratto
-  const initializeContract = (providerInstance, accountAddress) => {
-    // Ottieni la versione corretta dell'ABI
-    const abiToUse = VitaVerseNFTABI.abi ? VitaVerseNFTABI.abi : VitaVerseNFTABI;
-    
-    if (!Array.isArray(abiToUse)) {
-      console.error("ABI non valido:", abiToUse);
-      return null;
+  // init of the contract and provider
+  const setupProviderAndContract = async (accountAddress = null) => {
+    if (!window.ethereum) {
+      console.error("Metamask not installed");
+      return { providerInstance: null, contractInstance: null };
     }
-    
-    return new ethers.Contract(
-      CONTRACT_ADDRESS,
-      abiToUse,
-      providerInstance.getSigner()
-    );
-  };
 
-  // Funzione di utilità per gestire la connessione
-  const handleConnection = (accountAddress) => {
-    setAccount(accountAddress);
-    setIsConnected(true);
-    setActiveTab("statistics");
-  };
-
-  // Controllo iniziale della connessione
-  useEffect(() => {
-    const checkIfMetaMaskInstalled = async () => {
-      if (!window.ethereum) return;
-      
+    try {
       const providerInstance = new ethers.providers.Web3Provider(window.ethereum);
-      setProvider(providerInstance);
       
-      try {
+      // check if the user is connected 
+      // ESSENTIAL: check if the user is connected to the right network
+      let address = accountAddress;
+      if (!address) {
         const accounts = await providerInstance.listAccounts();
         if (accounts.length > 0) {
-          handleConnection(accounts[0]);
-          
-          const contractInstance = initializeContract(providerInstance, accounts[0]);
-          if (contractInstance) {
-            setContract(contractInstance);
-          }
+          address = accounts[0];
+        } else {
+          return { providerInstance, contractInstance: null, address: null };
         }
-      } catch (error) {
-        console.error("Error checking connection:", error);
       }
-    };
-
-    checkIfMetaMaskInstalled();
-  }, []);
-
-  // Listener per il cambio di account
-  useEffect(() => {
-    if (!window.ethereum) return;
-    
-    const handleAccountsChanged = (accounts) => {
-      if (accounts.length > 0) {
-        handleConnection(accounts[0]);
-        
-        const providerInstance = new ethers.providers.Web3Provider(window.ethereum);
-        const contractInstance = initializeContract(providerInstance, accounts[0]);
-        
-        setProvider(providerInstance);
-        if (contractInstance) {
-          setContract(contractInstance);
-        }
-      } else {
-        setAccount("");
-        setIsConnected(false);
-        setContract(null);
-        setActiveTab("welcome");
+      
+      // CONTRACT INIT, SAME AS IN THE COMPONENT
+      const abiToUse = VitaVerseNFTABI.abi ? VitaVerseNFTABI.abi : VitaVerseNFTABI;
+      if (!Array.isArray(abiToUse)) {
+        console.error("ABI non valido:", abiToUse);
+        return { providerInstance, contractInstance: null, address };
       }
-    };
+      
+      const contractInstance = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        abiToUse,
+        providerInstance.getSigner()
+      );
+      
+      return { providerInstance, contractInstance, address };
+    } catch (error) {
+      console.error("Errore nell'inizializzazione:", error);
+      return { providerInstance: null, contractInstance: null, address: null };
+    }
+  };
 
-    window.ethereum.on("accountsChanged", handleAccountsChanged);
 
-    return () => {
-      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
-    };
-  }, []);
-
-  // Funzione per connettere a MetaMask
   const connectToMetaMask = async () => {
     if (!window.ethereum) {
-      alert("MetaMask is not installed. Please install it to use this application.");
+      alert("METAMASK NOT INSTALLED");
       return;
     }
     
     try {
       setConnecting(true);
+      // Richiedi accesso agli account
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
-
-      const providerInstance = new ethers.providers.Web3Provider(window.ethereum);
-      const contractInstance = initializeContract(providerInstance, accounts[0]);
       
-      handleConnection(accounts[0]);
-      setProvider(providerInstance);
-      if (contractInstance) {
+      // Setup provider e contratto con l'account ottenuto
+      const { providerInstance, contractInstance } = await setupProviderAndContract(accounts[0]);
+      
+      if (providerInstance && accounts[0]) {
+        setProvider(providerInstance);
         setContract(contractInstance);
+        setAccount(accounts[0]);
+        setIsConnected(true);
+        setActiveTab("statistics");
       }
     } catch (error) {
-      console.error("Error connecting to MetaMask:", error);
+      console.error("Errore nella connessione a MetaMask:", error);
     } finally {
       setConnecting(false);
     }
   };
 
-  // Componente per il Welcome Screen
+  // Verifica lo stato di connessione all'avvio
+  useEffect(() => {
+    const checkConnection = async () => {
+      const { providerInstance, contractInstance, address } = await setupProviderAndContract();
+      
+      if (providerInstance && address) {
+        setProvider(providerInstance);
+        setContract(contractInstance);
+        setAccount(address);
+        setIsConnected(true);
+        setActiveTab("statistics");
+      }
+    };
+
+    checkConnection();
+    
+    // CHANGE account in metamask or disconnected
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          setIsConnected(false);
+          setAccount("");
+          setActiveTab("welcome");
+        } else {
+          checkConnection();
+        }
+      });
+    }
+    return () => {
+      if (window.ethereum && window.ethereum.removeListener) {
+        window.ethereum.removeListener('accountsChanged', () => {});
+      }
+    };
+  }, []);
+
+  // Welcome Screen se l'utente non è connesso, ALTRIMENTI mostra il contenuto
   const WelcomeScreen = () => (
     <div className="intro-section">
       <h2>Transform Your Health Journey with Blockchain</h2>
@@ -172,8 +171,6 @@ const Dashboard = () => {
       </div>
     </div>
   );
-
-  // Componente per il Welcome Screen quando connesso
   const WelcomeConnected = () => (
     <div className="welcome-connected">
       <h2>Welcome to VitaVerse!</h2>
@@ -190,7 +187,7 @@ const Dashboard = () => {
     </div>
   );
 
-  // Mostra il contenuto appropriato in base al tab attivo
+  // main render 
   const renderContent = () => {
     if (!isConnected) {
       return <WelcomeScreen />;

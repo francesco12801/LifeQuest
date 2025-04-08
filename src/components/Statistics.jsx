@@ -13,8 +13,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import "./style/Statistics.css";
-
-// Importa l'ABI e l'indirizzo del contratto (sostituisci con i valori reali)
 import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
 import { CONTRACT_ADDRESS } from "./constants/constants.jsx";
 
@@ -48,24 +46,18 @@ const Statistics = () => {
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updateError, setUpdateError] = useState("");
 
-  // Inizializza il contratto e carica i dati
+  // same contract function as before 
   useEffect(() => {
     const initialize = async () => {
       if (window.ethereum) {
-        // In Statistics.jsx, nella funzione initialize
         try {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
           const accounts = await provider.listAccounts();
-
           if (accounts.length > 0) {
             setAccount(accounts[0]);
-
-            // Usa un approccio più sicuro per accedere all'ABI
             const abiToUse = VitaVerseNFTABI.abi
               ? VitaVerseNFTABI.abi
               : VitaVerseNFTABI;
-
-            // Inizializza il contratto solo se l'ABI è valido
             if (Array.isArray(abiToUse)) {
               const contract = new ethers.Contract(
                 CONTRACT_ADDRESS,
@@ -74,7 +66,6 @@ const Statistics = () => {
               );
               setContract(contract);
 
-              // Carica i dati iniziali
               await loadHealthData(contract, accounts[0]);
               await loadUserStats(contract, accounts[0]);
               await loadHistoricalData(contract, accounts[0]);
@@ -99,24 +90,26 @@ const Statistics = () => {
     initialize();
   }, []);
 
-  // Carica i dati di salute dell'utente
+  // IMPORTANT: i have to get the health data from the contract
+  // i can use the same function as in the dashboard but the data must be formatted: 
+  // weight, sleepHours, energyLevel, exercise, waterIntake, lastUpdated (must be done in milliseconds)
   const loadHealthData = async (contract, account) => {
     try {
       const data = await contract.getHealthData(account);
       setHealthData({
-        weight: parseInt(data.weight) / 10, // Converti in formato leggibile
-        sleepHours: parseInt(data.sleepHours) / 10, // Converti in formato leggibile
+        weight: parseInt(data.weight) / 10, 
+        sleepHours: parseInt(data.sleepHours) / 10, 
         energyLevel: parseInt(data.energyLevel),
         exercise: parseInt(data.exercise),
         waterIntake: parseInt(data.waterIntake),
-        lastUpdated: parseInt(data.lastUpdated) * 1000, // Converti in millisecondi
+        lastUpdated: parseInt(data.lastUpdated) * 1000, 
       });
     } catch (error) {
       console.error("Error loading health data:", error);
     }
   };
 
-  // Carica le statistiche dell'utente
+  // Get statistics from the contract function 
   const loadUserStats = async (contract, account) => {
     try {
       const stats = await contract.getUserStats(account);
@@ -132,21 +125,17 @@ const Statistics = () => {
     }
   };
 
-  // Carica i dati storici
+  //Historical data of user, the idea is to extract the days 
+  // and then get the data for each day
   const loadHistoricalData = async (contract, account) => {
     try {
-      // Ottieni i giorni con dati
       const historyDays = await contract.getUserHistoryDays(account);
-
       const historicalDataArray = [];
-
-      // Per ogni giorno, ottieni i dati
+    
       for (let i = 0; i < historyDays.length; i++) {
         const day = historyDays[i];
         const dayData = await contract.getDailyHealthData(account, day);
-
-        const date = new Date(parseInt(day) * 86400 * 1000); // Converti day in data
-
+        const date = new Date(parseInt(day) * 86400 * 1000); 
         historicalDataArray.push({
           date: date.toLocaleDateString(),
           weight: parseInt(dayData.weight) / 10,
@@ -156,10 +145,7 @@ const Statistics = () => {
           waterIntake: parseInt(dayData.waterIntake),
         });
       }
-
-      // Ordina per data
       historicalDataArray.sort((a, b) => new Date(a.date) - new Date(b.date));
-
       setHistoricalData(historicalDataArray);
       setLoading(false);
     } catch (error) {
@@ -168,7 +154,7 @@ const Statistics = () => {
     }
   };
 
-  // Gestisce il cambio nei campi del form
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -177,21 +163,20 @@ const Statistics = () => {
     });
   };
 
-  // Invia l'aggiornamento dei dati di salute
+  // Send the updaye of the health data to the contract
+  // IMPORTANT: the data must be re-converted in the format of the contract
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUpdateSuccess(false);
     setUpdateError("");
 
     try {
-      // Converti i dati nel formato richiesto dal contratto
-      const weight = Math.round(parseFloat(formData.weight) * 10); // Converti in formato contratto
-      const sleepHours = Math.round(parseFloat(formData.sleepHours) * 10); // Converti in formato contratto
+      const weight = Math.round(parseFloat(formData.weight) * 10); 
+      const sleepHours = Math.round(parseFloat(formData.sleepHours) * 10); 
       const energyLevel = parseInt(formData.energyLevel);
       const exercise = parseInt(formData.exercise);
       const waterIntake = parseInt(formData.waterIntake);
-
-      // Verifica validità dei dati
+      // dtaa check 
       if (
         isNaN(weight) ||
         isNaN(sleepHours) ||
@@ -202,8 +187,7 @@ const Statistics = () => {
         setUpdateError("Please enter valid numbers for all fields");
         return;
       }
-
-      // Invia la transazione
+      // send function to acontract, wait and then load 
       const transaction = await contract.updateHealthData(
         weight,
         sleepHours,
@@ -211,18 +195,12 @@ const Statistics = () => {
         exercise,
         waterIntake
       );
-
-      // Attendi che la transazione sia confermata
       await transaction.wait();
-
-      // Aggiorna i dati
       await loadHealthData(contract, account);
       await loadUserStats(contract, account);
       await loadHistoricalData(contract, account);
 
       setUpdateSuccess(true);
-
-      // Resetta il form
       setFormData({
         weight: "",
         sleepHours: "",
@@ -235,8 +213,6 @@ const Statistics = () => {
       setUpdateError("Transaction failed. Please try again.");
     }
   };
-
-  // Formatta la data
   const formatDate = (timestamp) => {
     if (!timestamp) return "Never";
     return new Date(timestamp).toLocaleString();
@@ -260,7 +236,7 @@ const Statistics = () => {
       </div>
 
       <div className="statistics-grid">
-        {/* Current Stats Section */}
+
         <div className="stats-card">
           <h2>Current Health Stats</h2>
           <div className="stats-details">
@@ -305,7 +281,7 @@ const Statistics = () => {
           </div>
         </div>
 
-        {/* Achievement Stats Section */}
+
         <div className="stats-card">
           <h2>Achievement Stats</h2>
           <div className="achievement-stats">
@@ -333,7 +309,7 @@ const Statistics = () => {
           </div>
         </div>
 
-        {/* Update Health Data Form */}
+
         <div className="stats-card update-form-card">
           <h2>Update Today's Health Data</h2>
           {updateSuccess && (
@@ -418,7 +394,6 @@ const Statistics = () => {
         </div>
       </div>
 
-      {/* Historical Data Charts */}
       <div className="charts-section">
         <h2>Health History Analytics</h2>
 

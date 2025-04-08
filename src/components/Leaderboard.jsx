@@ -1,39 +1,31 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import "./style/Leaderboard.css";
-
-// Importa l'ABI e l'indirizzo del contratto (sostituisci con i valori reali)
 import VitaVerseNFTABI from "./constants/abi/vitaVerseABI.json";
 import { CONTRACT_ADDRESS } from "./constants/constants.jsx";
-
 
 const Leaderboard = () => {
   const [account, setAccount] = useState("");
   const [contract, setContract] = useState(null);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all"); // 'all', 'exercise', 'streak', 'badges'
-  const [timeframe, setTimeframe] = useState("weekly"); // 'weekly', 'monthly', 'allTime'
+  const [filter, setFilter] = useState("all");
+  const [timeframe, setTimeframe] = useState("weekly");
   const [userRank, setUserRank] = useState(null);
 
-  // Inizializza il contratto e carica i dati
+  // same function of the other pages
   useEffect(() => {
     const initialize = async () => {
       if (window.ethereum) {
-        // In Leaderboard.jsx, nella funzione initialize
         try {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
           const accounts = await provider.listAccounts();
 
           if (accounts.length > 0) {
             setAccount(accounts[0]);
-
-            // Usa un approccio più sicuro per accedere all'ABI
             const abiToUse = VitaVerseNFTABI.abi
               ? VitaVerseNFTABI.abi
               : VitaVerseNFTABI;
-
-            // Inizializza il contratto solo se l'ABI è valido
             if (Array.isArray(abiToUse)) {
               const contract = new ethers.Contract(
                 CONTRACT_ADDRESS,
@@ -42,7 +34,7 @@ const Leaderboard = () => {
               );
               setContract(contract);
 
-              // Carica i dati della leaderboard
+              // data loading in my leaderboard
               await loadLeaderboardData(
                 contract,
                 accounts[0],
@@ -50,7 +42,7 @@ const Leaderboard = () => {
                 timeframe
               );
             } else {
-              console.error("ABI non valido:", abiToUse);
+              console.error("ABI not valid:", abiToUse);
               setLoading(false);
             }
           } else {
@@ -70,14 +62,13 @@ const Leaderboard = () => {
     initialize();
   }, []);
 
-  // Carica i dati della leaderboard quando cambia il filtro o il timeframe
+  // i have to load data on leaderboard even if the filter changes 
   useEffect(() => {
     if (contract && account) {
       loadLeaderboardData(contract, account, filter, timeframe);
     }
   }, [filter, timeframe, contract, account]);
 
-  // Funzione per caricare i dati della leaderboard
   const loadLeaderboardData = async (
     contract,
     userAccount,
@@ -86,23 +77,16 @@ const Leaderboard = () => {
   ) => {
     setLoading(true);
     try {
-      // Ottieni i dati dal contratto usando la funzione getTopHealthUsers
-      const limit = 20; // Richiedi fino a 20 utenti
+      // get data from contraxt abi function 
+      const limit = 20; 
       const result = await contract.getTopHealthUsers(limit);
-
-      // Estrai utenti e punteggi dai risultati
       const users = result[0];
       const healthScores = result[1];
 
-      // Creiamo un array di oggetti per ogni utente
       const usersData = [];
       for (let i = 0; i < users.length; i++) {
         const userAddress = users[i];
-
-        // Per ogni utente, ottieni le statistiche
         const userStats = await contract.getUserStats(userAddress);
-
-        // Crea oggetto con tutti i dati dell'utente
         const userData = {
           address: userAddress,
           healthScore: parseInt(healthScores[i]),
@@ -116,7 +100,7 @@ const Leaderboard = () => {
         usersData.push(userData);
       }
 
-      // Filtra e ordina i dati in base al filtro selezionato
+      // filtering 
       let filteredData = [...usersData];
 
       switch (filterType) {
@@ -129,25 +113,23 @@ const Leaderboard = () => {
         case "badges":
           filteredData.sort((a, b) => b.badgeCount - a.badgeCount);
           break;
-        default: // 'all' o qualsiasi altro valore
+        default: 
           filteredData.sort((a, b) => b.healthScore - a.healthScore);
       }
 
-      // Applica timeframe limitando i risultati
-      // Nota: in un'implementazione reale, dovresti filtrare i dati in base al timestamp
+      // it's just a test, i have to change it
       if (timeRange === "weekly") {
         filteredData = filteredData.slice(0, Math.min(10, filteredData.length));
       } else if (timeRange === "monthly") {
         filteredData = filteredData.slice(0, Math.min(15, filteredData.length));
       }
-
-      // Assegna posizioni di classifica
+      // ranking 
       filteredData = filteredData.map((user, index) => ({
         ...user,
         rank: index + 1,
       }));
 
-      // Trova il rank dell'utente corrente
+      // i want to show the user rank in the leaderboard
       const userRanking = filteredData.find(
         (user) => user.address === userAccount
       );
@@ -156,32 +138,29 @@ const Leaderboard = () => {
       } else {
         setUserRank(null);
       }
-
       setLeaderboardData(filteredData);
       setLoading(false);
     } catch (error) {
       console.error("Error loading leaderboard data:", error);
       setLoading(false);
-
-      // In caso di errore, mostra una tabella vuota
       setLeaderboardData([]);
     }
   };
 
-  // Funzione per abbreviare gli indirizzi
+
   const shortenAddress = (address) => {
     return `${address.substring(0, 6)}...${address.substring(
       address.length - 4
     )}`;
   };
 
-  // Genera un avatar semplice basato sull'indirizzo
   function generateAvatar(address) {
-    // Usa l'indirizzo come seed per generare un colore
+    // cool function found on github, i use the address to generate a color
+    // and i use the first two characters of the address to generate a letter
+    // that will be the avatar
     const hash = address.toLowerCase().replace("0x", "");
     const color = `#${hash.substring(0, 6)}`;
     const backgroundColor = `#${hash.substring(6, 12)}`;
-
     return (
       <div
         className="avatar"
@@ -195,26 +174,19 @@ const Leaderboard = () => {
     );
   }
 
-  // Funzione per ottenere un colore di contrasto
+
   function getContrastColor(hexColor) {
-    // Converte il colore esadecimale in RGB
     const r = parseInt(hexColor.substring(1, 3), 16);
     const g = parseInt(hexColor.substring(3, 5), 16);
     const b = parseInt(hexColor.substring(5, 7), 16);
-
-    // Calcola la luminosità
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-    // Restituisce bianco o nero in base alla luminosità
     return luminance > 0.5 ? "#000000" : "#FFFFFF";
   }
 
-  // Funzione per gestire il cambio di filtro
+  // filtering change 
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
   };
-
-  // Funzione per gestire il cambio di timeframe
   const handleTimeframeChange = (e) => {
     setTimeframe(e.target.value);
   };
