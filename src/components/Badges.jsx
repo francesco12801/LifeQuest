@@ -119,7 +119,7 @@ const Badges = () => {
     }
   };
 
-  // placeholder, in my final version i should use 
+  // placeholder, in my final version i should use photo
   const getBadgeImage = (name) => {
     let backgroundColor, iconText;
     if (name.includes("Early Bird")) {
