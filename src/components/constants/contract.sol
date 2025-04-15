@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
+// basic idea of token reward distribution: DeFi
 contract VitaVerseNFT is ERC721Enumerable, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
@@ -279,7 +279,6 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         bool _active) external onlyOwner {
         _createBadge(_name, _description, _price, _supply, _type, _active);
         uint256 badgeId = _tokenIds.current() - 1;
-
         bytes32 badgeType = keccak256(abi.encodePacked(_type));
         achievementThresholds[badgeType] = _achievementThreshold;
         badgeRewards[badgeType] = _rewardAmount;
@@ -357,28 +356,18 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         uint256 _energyLevel,
         uint256 _exercise,
         uint256 _waterIntake) external returns (bool) {
-        // Get current time
+        // Get current time 
+        // we have toc check if it's a new day 
         uint256 currentTime = block.timestamp;
-
-        // Get the current day (timestamp divided by seconds in a day)
         uint256 currentDay = currentTime / 86400;
-
-        // Load current health data
         HealthData storage data = userHealthData[msg.sender];
-
-        // Check if this is a new day
         bool isNewDay = currentDay > data.lastUpdateDay;
-
-        // Update streak if this is a new day
         if (isNewDay) {
             if (currentDay - data.lastUpdateDay == 1) {
-                // Consecutive day
                 data.streakDays += 1;
             } else if (data.lastUpdateDay > 0) {
-                // Streak broken
                 data.streakDays = 1;
             } else {
-                // First data entry
                 data.streakDays = 1;
             }
             data.lastUpdateDay = currentDay;
@@ -392,15 +381,13 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
             isActiveUser[msg.sender] = true;
         }
 
-        // Update health data in main record
+        // Update health data in main record and store daily
         data.weight = _weight;
         data.sleepHours = _sleepHours;
         data.energyLevel = _energyLevel;
         data.exercise = _exercise;
         data.waterIntake = _waterIntake;
         data.lastUpdated = currentTime;
-
-        // Store daily health data in history
         userHealthHistory[msg.sender][currentDay] = DailyHealthData({
             weight: _weight,
             sleepHours: _sleepHours,
