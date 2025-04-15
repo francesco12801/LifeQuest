@@ -60,7 +60,9 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
 
     // Events
     // i do not need now these events but i will need them to implement my social features. 
-    // IDEA REMEMBER: notify all the users when some friend of them get a badge
+    // IDEA REMEMBER: notify all the users when some friend get a badge
+    // Aggiornare l'interfaccia utente in tempo reale
+    // Inviare notifiche agli utenti
     event HealthDataUpdated(
         address indexed user,
         uint256 weight,
@@ -76,8 +78,7 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
     constructor(address _yodaTokenAddress)
         ERC721("VitaVerse Badge", "VVB")
         ERC721Enumerable()
-        Ownable(msg.sender)
-    {
+        Ownable(msg.sender) {
         yodaToken = IERC20(_yodaTokenAddress);
 
         initBadges(); 
