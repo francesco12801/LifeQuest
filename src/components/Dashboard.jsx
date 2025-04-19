@@ -89,7 +89,6 @@ const Dashboard = () => {
     }
   };
 
-  // Verifica lo stato di connessione all'avvio
   useEffect(() => {
     const checkConnection = async () => {
       const { providerInstance, contractInstance, address } = await setupProviderAndContract();
@@ -129,8 +128,8 @@ const Dashboard = () => {
     <div className="intro-section">
       <h2>Transform Your Health Journey with Blockchain</h2>
       <p>
-        VitaVerse is a revolutionary platform that combines blockchain
-        technology with health tracking, rewarding you for maintaining a
+        VitaVerse is a platform that combines blockchain
+        technology with health tracking, rewarding users for maintaining a
         healthy lifestyle with exclusive NFT badges and YODA tokens.
       </p>
       <p>
@@ -186,8 +185,6 @@ const Dashboard = () => {
       </button>
     </div>
   );
-
-  // main render 
   const renderContent = () => {
     if (!isConnected) {
       return <WelcomeScreen />;
@@ -268,7 +265,7 @@ const Dashboard = () => {
             <div className="dashboard-content">
               <div className="logo-container">
                 <div className="logo">
-                  <VitaVerseLogo width="200" height="200" />
+                  <VitaVerseLogo width="130" height="130" />
                 </div>
                 <h1 className="app-title">VitaVerse</h1>
               </div>

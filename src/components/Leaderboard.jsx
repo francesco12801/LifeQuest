@@ -12,6 +12,7 @@ const Leaderboard = () => {
   const [filter, setFilter] = useState("all");
   const [timeframe, setTimeframe] = useState("weekly");
   const [userRank, setUserRank] = useState(null);
+  const [rawUserData, setRawUserData] = useState(null); 
 
   // same function of the other pages
   useEffect(() => {
@@ -35,12 +36,7 @@ const Leaderboard = () => {
               setContract(contract);
 
               // data loading in my leaderboard
-              await loadLeaderboardData(
-                contract,
-                accounts[0],
-                filter,
-                timeframe
-              );
+              await loadLeaderboardData(contract, accounts[0]);
             } else {
               console.error("ABI not valid:", abiToUse);
               setLoading(false);
@@ -62,74 +58,72 @@ const Leaderboard = () => {
     initialize();
   }, []);
 
-  // i have to load data on leaderboard even if the filter changes 
+  // Apply filtering without re-fetching data from blockchain
   useEffect(() => {
-    if (contract && account) {
-      loadLeaderboardData(contract, account, filter, timeframe);
+    if (rawUserData) {
+      const filteredData = applyFilters(rawUserData, filter, timeframe, account);
+      setLeaderboardData(filteredData);
+      const userRanking = filteredData.find(
+        (user) => user.address === account
+      );
+      if (userRanking) {
+        setUserRank(userRanking.rank);
+      } else {
+        setUserRank(null);
+      }
     }
-  }, [filter, timeframe, contract, account]);
+  }, [filter, timeframe, rawUserData, account]);
 
-  const loadLeaderboardData = async (
-    contract,
-    userAccount,
-    filterType,
-    timeRange
-  ) => {
+  const loadLeaderboardData = async (contract, userAccount) => {
     setLoading(true);
     try {
-      // get data from contraxt abi function 
-      const limit = 20; 
-      const result = await contract.getTopHealthUsers(limit);
+      // Get all active users and their health data
+      const result = await contract.getAllActiveUsers();
       const users = result[0];
-      const healthScores = result[1];
+      const healthData = result[1];
+      
+      // Get badge counts in a single call
+      const badgeCounts = await contract.getUserBadgeCounts(users);
 
       const usersData = [];
       for (let i = 0; i < users.length; i++) {
         const userAddress = users[i];
-        const userStats = await contract.getUserStats(userAddress);
+        
+        // Extract health data from the array
+        const sleepHours = parseInt(healthData[i * 4]);
+        const waterIntake = parseInt(healthData[i * 4 + 1]);
+        const exerciseMinutes = parseInt(healthData[i * 4 + 2]);
+        const streakDays = parseInt(healthData[i * 4 + 3]);
+        const badgeCount = parseInt(badgeCounts[i]);
+        
+        // Calculate health score using the same formula as the original contract
+        const healthScore = 
+          (sleepHours / 10) * 20 + 
+          waterIntake / 100 + 
+          exerciseMinutes / 10 + 
+          streakDays * 5;
+
         const userData = {
           address: userAddress,
-          healthScore: parseInt(healthScores[i]),
-          streakDays: parseInt(userStats.streakDays),
-          exerciseMinutes: parseInt(userStats.totalExercise),
-          waterIntake: parseInt(userStats.waterIntake),
-          badgeCount: parseInt(userStats.badgeCount),
+          healthScore: healthScore,
+          streakDays: streakDays,
+          exerciseMinutes: exerciseMinutes,
+          waterIntake: waterIntake,
+          badgeCount: badgeCount,
           avatar: generateAvatar(userAddress),
         };
 
         usersData.push(userData);
       }
 
-      // filtering 
-      let filteredData = [...usersData];
-
-      switch (filterType) {
-        case "exercise":
-          filteredData.sort((a, b) => b.exerciseMinutes - a.exerciseMinutes);
-          break;
-        case "streak":
-          filteredData.sort((a, b) => b.streakDays - a.streakDays);
-          break;
-        case "badges":
-          filteredData.sort((a, b) => b.badgeCount - a.badgeCount);
-          break;
-        default: 
-          filteredData.sort((a, b) => b.healthScore - a.healthScore);
-      }
-
-      // it's just a test, i have to change it
-      if (timeRange === "weekly") {
-        filteredData = filteredData.slice(0, Math.min(10, filteredData.length));
-      } else if (timeRange === "monthly") {
-        filteredData = filteredData.slice(0, Math.min(15, filteredData.length));
-      }
-      // ranking 
-      filteredData = filteredData.map((user, index) => ({
-        ...user,
-        rank: index + 1,
-      }));
-
-      // i want to show the user rank in the leaderboard
+      // Store raw data
+      setRawUserData(usersData);
+      
+      // Apply initial filtering
+      const filteredData = applyFilters(usersData, filter, timeframe, userAccount);
+      setLeaderboardData(filteredData);
+      
+      // Find user rank
       const userRanking = filteredData.find(
         (user) => user.address === userAccount
       );
@@ -138,7 +132,7 @@ const Leaderboard = () => {
       } else {
         setUserRank(null);
       }
-      setLeaderboardData(filteredData);
+      
       setLoading(false);
     } catch (error) {
       console.error("Error loading leaderboard data:", error);
@@ -147,6 +141,43 @@ const Leaderboard = () => {
     }
   };
 
+  // Function to apply filters to raw data
+  function applyFilters(data, filterType, timeRange, userAccount) {
+    // Make a copy to avoid modifying the original data
+    let filteredData = [...data];
+
+    // Apply sorting based on filter type
+    switch (filterType) {
+      case "exercise":
+        filteredData.sort((a, b) => b.exerciseMinutes - a.exerciseMinutes);
+        break;
+      case "streak":
+        filteredData.sort((a, b) => b.streakDays - a.streakDays);
+        break;
+      case "badges":
+        filteredData.sort((a, b) => b.badgeCount - a.badgeCount);
+        break;
+      default: // "all" - sort by overall health score
+        filteredData.sort((a, b) => b.healthScore - a.healthScore);
+    }
+
+    // Apply time range filtering
+    // This is a simplified version since we don't have actual timestamp data
+    // In a real implementation, you would filter based on actual dates
+    if (timeRange === "weekly") {
+      filteredData = filteredData.slice(0, Math.min(10, filteredData.length));
+    } else if (timeRange === "monthly") {
+      filteredData = filteredData.slice(0, Math.min(15, filteredData.length));
+    }
+    
+    // Add rank numbers
+    filteredData = filteredData.map((user, index) => ({
+      ...user,
+      rank: index + 1,
+    }));
+
+    return filteredData;
+  }
 
   const shortenAddress = (address) => {
     return `${address.substring(0, 6)}...${address.substring(
@@ -173,7 +204,6 @@ const Leaderboard = () => {
       </div>
     );
   }
-
 
   function getContrastColor(hexColor) {
     const r = parseInt(hexColor.substring(1, 3), 16);
@@ -310,7 +340,7 @@ const Leaderboard = () => {
                         className="score-bar"
                         style={{ width: `${Math.min(user.healthScore, 100)}%` }}
                       ></div>
-                      <span className="score-value">{user.healthScore}</span>
+                      <span className="score-value">{Math.round(user.healthScore)}</span>
                     </div>
                   </td>
                   <td className={filter === "streak" ? "highlight-column" : ""}>

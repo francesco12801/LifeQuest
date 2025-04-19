@@ -11,47 +11,48 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
-    // YodaToken contract reference, supposing that i have to insert the address of the token given in class 
+    // YodaToken contract reference, supposing that i have to insert the address of the token given in class
     IERC20 public yodaToken;
 
     // Badge structure
     struct Badge {
         string name;
         string description;
-        uint256 price; // it's not useful for the moment but maybe in the future i can use it to get money. 
+        uint256 price; // it's not useful for the moment but maybe in the future i can use it to get money.
         uint256 supply;
         uint256 remaining;
         bytes32 badgeType;
         bool active;
-        uint256 nextBadgeId; 
-        bool hasNextLevel; 
+        uint256 nextBadgeId;
+        bool hasNextLevel;
     }
 
     // Daily health data structure
     struct DailyHealthData {
-        uint256 weight; 
-        uint256 sleepHours; 
-        uint256 energyLevel; 
-        uint256 exercise; 
-        uint256 waterIntake; 
-        uint256 timestamp; 
+        uint256 weight;
+        uint256 sleepHours;
+        uint256 energyLevel;
+        uint256 exercise;
+        uint256 waterIntake;
+        uint256 timestamp;
     }
 
     // User health data structure
     struct HealthData {
-        uint256 weight; 
-        uint256 sleepHours; 
-        uint256 energyLevel; 
-        uint256 exercise; 
-        uint256 waterIntake; 
-        uint256 lastUpdated; 
-        uint256 streakDays; 
-        uint256 lastUpdateDay; 
+        uint256 weight;
+        uint256 sleepHours;
+        uint256 energyLevel;
+        uint256 exercise;
+        uint256 waterIntake;
+        uint256 lastUpdated;
+        uint256 streakDays;
+        uint256 lastUpdateDay;
     }
     mapping(uint256 => Badge) private _badges;
     mapping(address => mapping(uint256 => bool)) public userBadges;
     mapping(address => HealthData) public userHealthData;
-    mapping(address => mapping(uint256 => DailyHealthData)) public userHealthHistory;
+    mapping(address => mapping(uint256 => DailyHealthData))
+        public userHealthHistory;
     mapping(address => uint256[]) public userHistoryDays;
     mapping(bytes32 => uint256) public achievementThresholds;
     mapping(bytes32 => uint256) public badgeRewards;
@@ -59,7 +60,7 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
     mapping(address => bool) public isActiveUser;
 
     // Events
-    // i do not need now these events but i will need them to implement my social features. 
+    // i do not need now these events but i will need them to implement my social features.
     // IDEA REMEMBER: notify all the users when some friend get a badge
     // Aggiornare l'interfaccia utente in tempo reale
     // Inviare notifiche agli utenti
@@ -69,24 +70,22 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         uint256 sleepHours,
         uint256 energyLevel,
         uint256 exercise,
-        uint256 waterIntake);
+        uint256 waterIntake
+    );
     event BadgeEarned(address indexed user, uint256 badgeId, string badgeName);
     event NewBadgeCreated(uint256 badgeId, string name, bytes32 badgeType);
     event NextBadgeUnlocked(uint256 badgeId, string badgeName);
 
-    
-    constructor(address _yodaTokenAddress)
-        ERC721("VitaVerse Badge", "VVB")
-        ERC721Enumerable()
-        Ownable(msg.sender) {
+    constructor(
+        address _yodaTokenAddress
+    ) ERC721("VitaVerse Badge", "VVB") ERC721Enumerable() Ownable(msg.sender) {
         yodaToken = IERC20(_yodaTokenAddress);
 
-        initBadges(); 
+        initBadges();
     }
 
     function initBadges() private {
-
-        // Badges are organized in tree tier: i do not want to create so many tiers since the contract can't be so long 
+        // Badges are organized in tree tier: i do not want to create so many tiers since the contract can't be so long
         _createBadge(
             "Early Bird I",
             "Completed 7 consecutive days of morning exercise",
@@ -230,7 +229,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         uint256 _price,
         uint256 _supply,
         string memory _type,
-        bool _active) internal {
+        bool _active
+    ) internal {
         uint256 badgeId = _tokenIds.current();
         _badges[badgeId] = Badge({
             name: _name,
@@ -257,17 +257,18 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         string memory _description,
         uint256 _price,
         uint256 _supply,
-        string memory _type) internal {
+        string memory _type
+    ) internal {
         _createBadge(_name, _description, _price, _supply, _type, true);
     }
-    
+
     function _linkBadges(uint256 _badgeId, uint256 _nextBadgeId) internal {
         _badges[_badgeId].nextBadgeId = _nextBadgeId;
         _badges[_badgeId].hasNextLevel = true;
     }
 
-    // i also need some external function because maybe if i wanna add badges as owner i need to do that 
-    // adding all the onlyOwner features 
+    // i also need some external function because maybe if i wanna add badges as owner i need to do that
+    // adding all the onlyOwner features
     function createBadge(
         string memory _name,
         string memory _description,
@@ -276,7 +277,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         string memory _type,
         uint256 _achievementThreshold,
         uint256 _rewardAmount,
-        bool _active) external onlyOwner {
+        bool _active
+    ) external onlyOwner {
         _createBadge(_name, _description, _price, _supply, _type, _active);
         uint256 badgeId = _tokenIds.current() - 1;
         bytes32 badgeType = keccak256(abi.encodePacked(_type));
@@ -284,24 +286,27 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         badgeRewards[badgeType] = _rewardAmount;
     }
 
-    function linkBadges(uint256 _badgeId, uint256 _nextBadgeId)
-        external
-        onlyOwner{
+    function linkBadges(
+        uint256 _badgeId,
+        uint256 _nextBadgeId
+    ) external onlyOwner {
         require(_badgeId < _tokenIds.current(), "Invalid badge ID");
         require(_nextBadgeId < _tokenIds.current(), "Invalid next badge ID");
         _linkBadges(_badgeId, _nextBadgeId);
     }
 
-    function setAchievementThreshold(string memory _type, uint256 _threshold)
-        external
-        onlyOwner{
+    function setAchievementThreshold(
+        string memory _type,
+        uint256 _threshold
+    ) external onlyOwner {
         bytes32 badgeType = keccak256(abi.encodePacked(_type));
         achievementThresholds[badgeType] = _threshold;
     }
 
-    function setRewardAmount(string memory _type, uint256 _amount)
-        external
-        onlyOwner{
+    function setRewardAmount(
+        string memory _type,
+        uint256 _amount
+    ) external onlyOwner {
         bytes32 badgeType = keccak256(abi.encodePacked(_type));
         badgeRewards[badgeType] = _amount;
     }
@@ -333,31 +338,32 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         require(yodaToken.transfer(owner(), _amount), "Transfer failed");
     }
 
-    function toggleBadgeActive(uint256 _badgeId, bool _active)
-        external
-        onlyOwner{
+    function toggleBadgeActive(
+        uint256 _badgeId,
+        bool _active
+    ) external onlyOwner {
         require(_badgeId < _tokenIds.current(), "Invalid badge ID");
         _badges[_badgeId].active = _active;
     }
 
-    // user check and get data 
+    // user check and get data
 
-    function hasBadge(address _user, uint256 _badgeId)
-        external
-        view
-        returns (bool){
+    function hasBadge(
+        address _user,
+        uint256 _badgeId
+    ) external view returns (bool) {
         return userBadges[_user][_badgeId];
     }
 
-   
     function updateHealthData(
         uint256 _weight,
         uint256 _sleepHours,
         uint256 _energyLevel,
         uint256 _exercise,
-        uint256 _waterIntake) external returns (bool) {
-        // Get current time 
-        // we have toc check if it's a new day 
+        uint256 _waterIntake
+    ) external returns (bool) {
+        // Get current time
+        // we have toc check if it's a new day
         uint256 currentTime = block.timestamp;
         uint256 currentDay = currentTime / 86400;
         HealthData storage data = userHealthData[msg.sender];
@@ -412,8 +418,9 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         return true;
     }
 
-    
-    function getHealthData(address _user)
+    function getHealthData(
+        address _user
+    )
         external
         view
         returns (
@@ -423,7 +430,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
             uint256 exercise,
             uint256 waterIntake,
             uint256 lastUpdated
-        ){
+        )
+    {
         HealthData memory data = userHealthData[_user];
         return (
             data.weight,
@@ -435,8 +443,10 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         );
     }
 
-    
-    function getDailyHealthData(address _user, uint256 _day)
+    function getDailyHealthData(
+        address _user,
+        uint256 _day
+    )
         external
         view
         returns (
@@ -446,7 +456,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
             uint256 exercise,
             uint256 waterIntake,
             uint256 timestamp
-        ){
+        )
+    {
         DailyHealthData memory data = userHealthHistory[_user][_day];
         return (
             data.weight,
@@ -458,16 +469,15 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         );
     }
 
-    
-    function getUserHistoryDays(address _user)
-        external
-        view
-        returns (uint256[] memory){
+    function getUserHistoryDays(
+        address _user
+    ) external view returns (uint256[] memory) {
         return userHistoryDays[_user];
     }
 
-    
-    function getUserStats(address _user)
+    function getUserStats(
+        address _user
+    )
         external
         view
         returns (
@@ -476,7 +486,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
             uint256 totalExercise,
             uint256 waterIntake,
             uint256 badgeCount
-        ){
+        )
+    {
         HealthData memory data = userHealthData[_user];
 
         // Count user badges
@@ -496,64 +507,58 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         );
     }
 
-    
-    function getTopHealthUsers(uint256 _limit)
+    // Replace the getTopHealthUsers function with this new function
+
+    function getAllActiveUsers()
         external
         view
-        returns (address[] memory users, uint256[] memory healthScores){
-        // Determina quanti utenti restituire (il minimo tra _limit e il numero totale di utenti)
-        uint256 returnCount = activeUsers.length < _limit
-            ? activeUsers.length
-            : _limit;
+        returns (address[] memory users, uint256[] memory healthData)
+    {
+        uint256 count = activeUsers.length;
+        users = new address[](count);
 
-        // Crea gli array di output con la dimensione corretta
-        users = new address[](returnCount);
-        healthScores = new uint256[](returnCount);
+        // Create an array to hold multiple health data points per user
+        // Index meanings: 0=sleepHours, 1=waterIntake, 2=exercise, 3=streakDays
+        healthData = new uint256[](count * 4);
 
-        // Calcola i punteggi per tutti gli utenti attivi
-        uint256[] memory tempScores = new uint256[](activeUsers.length);
-        for (uint256 i = 0; i < activeUsers.length; i++) {
+        for (uint256 i = 0; i < count; i++) {
             address user = activeUsers[i];
+            users[i] = user;
+
             HealthData memory data = userHealthData[user];
 
-            // Formula per il punteggio di salute
-            tempScores[i] =
-                (data.sleepHours / 10) *
-                20 +
-                data.waterIntake /
-                100 +
-                data.exercise /
-                10 +
-                data.streakDays *
-                5;
+            // Store the health data in the array
+            healthData[i * 4] = data.sleepHours;
+            healthData[i * 4 + 1] = data.waterIntake;
+            healthData[i * 4 + 2] = data.exercise;
+            healthData[i * 4 + 3] = data.streakDays;
         }
 
-    
-        for (uint256 i = 0; i < returnCount; i++) {
-            uint256 highestScore = 0;
-            uint256 highestScoreIndex = 0;
-
-            // Trova l'utente con il punteggio più alto tra quelli non ancora selezionati
-            for (uint256 j = 0; j < activeUsers.length; j++) {
-                if (tempScores[j] > highestScore) {
-                    highestScore = tempScores[j];
-                    highestScoreIndex = j;
-                }
-            }
-
-            // Aggiungi l'utente con il punteggio più alto agli array di output
-            users[i] = activeUsers[highestScoreIndex];
-            healthScores[i] = highestScore;
-
-            // Imposta il punteggio a 0 per non selezionare nuovamente questo utente
-            tempScores[highestScoreIndex] = 0;
-        }
-
-        return (users, healthScores);
+        return (users, healthData);
     }
 
+    // Add this function to get badge counts efficiently
+    function getUserBadgeCounts(
+        address[] calldata _users
+    ) external view returns (uint256[] memory badgeCounts) {
+        badgeCounts = new uint256[](_users.length);
 
-    function badges(uint256 _badgeId)
+        for (uint256 i = 0; i < _users.length; i++) {
+            uint256 count = 0;
+            for (uint256 j = 0; j < _tokenIds.current(); j++) {
+                if (userBadges[_users[i]][j]) {
+                    count++;
+                }
+            }
+            badgeCounts[i] = count;
+        }
+
+        return badgeCounts;
+    }
+
+    function badges(
+        uint256 _badgeId
+    )
         external
         view
         returns (
@@ -564,7 +569,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
             uint256 remaining,
             bytes32 badgeType,
             bool active
-        ){
+        )
+    {
         Badge memory badge = _badges[_badgeId];
         return (
             badge.name,
@@ -577,8 +583,9 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         );
     }
 
-
-    function getBadgeDetails(uint256 _badgeId)
+    function getBadgeDetails(
+        uint256 _badgeId
+    )
         external
         view
         returns (
@@ -591,7 +598,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
             bool active,
             uint256 nextBadgeId,
             bool hasNextLevel
-        ){
+        )
+    {
         Badge memory badge = _badges[_badgeId];
         return (
             badge.name,
@@ -605,8 +613,6 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
             badge.hasNextLevel
         );
     }
-
-    
 
     function _mintBadge(address _user) internal {
         uint256 newItemId = _tokenIds.current();
@@ -705,7 +711,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
     function _attemptAwardBadge(
         address _user,
         uint256 _badgeId,
-        string memory _type) internal {
+        string memory _type
+    ) internal {
         if (userBadges[_user][_badgeId]) {
             return;
         }
@@ -741,5 +748,4 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
 
         emit BadgeEarned(_user, _badgeId, badge.name);
     }
-    
 }
