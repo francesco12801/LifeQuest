@@ -278,8 +278,7 @@ const Dashboard = () => {
 
       <footer className="app-footer">
         <p>
-          &copy; {new Date().getFullYear()} VitaVerse - Blockchain Health
-          Tracking Platform
+          &copy; {new Date().getFullYear()} VitaVerse - Francesco Tinessa. All rights reserved.
         </p>
       </footer>
     </div>
