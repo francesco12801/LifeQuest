@@ -275,7 +275,7 @@ const Dashboard = () => {
           </div>
         )}
       </main>
-
+      
       <footer className="app-footer">
         <p>
           &copy; {new Date().getFullYear()} VitaVerse - Francesco Tinessa. All rights reserved.

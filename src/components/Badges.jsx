@@ -10,7 +10,7 @@ const Badges = () => {
   const [badges, setBadges] = useState([]);
   const [userBadges, setUserBadges] = useState({});
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all"); 
+  const [filter, setFilter] = useState("all");
 
   // i need this function to get the badges data from the contract and connect to the wallet
   useEffect(() => {
@@ -23,10 +23,11 @@ const Badges = () => {
           if (accounts.length > 0) {
             setAccount(accounts[0]);
 
-    
-            const abiToUse = VitaVerseNFTABI.abi ? VitaVerseNFTABI.abi : VitaVerseNFTABI;
+            const abiToUse = VitaVerseNFTABI.abi
+              ? VitaVerseNFTABI.abi
+              : VitaVerseNFTABI;
 
-            // Double check for the error 
+            // Double check for the error
             if (Array.isArray(abiToUse)) {
               const contract = new ethers.Contract(
                 CONTRACT_ADDRESS,
@@ -35,7 +36,6 @@ const Badges = () => {
               );
               setContract(contract);
 
-             
               await loadBadgesData(contract, accounts[0]);
             } else {
               console.error("ABI non valido:", abiToUse);
@@ -62,13 +62,13 @@ const Badges = () => {
 
   const loadBadgesData = async (contract, userAccount) => {
     try {
-      // contract logic: 9 badges, each with a different type and reward  
+      // contract logic: 9 badges, each with a different type and reward
       const badgesData = [];
       const userBadgesStatus = {};
       // the idea is to get all the badges(REMEBER THE THRESHOLD) and then check if the user has them
       for (let i = 0; i < 9; i++) {
         try {
-          const badgeDetails = await contract.getBadgeDetails(i);          
+          const badgeDetails = await contract.getBadgeDetails(i);
           const hasBadge = await contract.hasBadge(userAccount, i);
           userBadgesStatus[i] = hasBadge;
           const badgeType = badgeDetails.badgeType;
@@ -87,7 +87,7 @@ const Badges = () => {
             threshold: parseInt(threshold),
             thresholdUnit: badgeTypeText.unit,
             badgeType: badgeTypeText.type,
-            reward: ethers.utils.formatEther(reward), 
+            reward: ethers.utils.formatEther(reward),
             image: getBadgeImage(badgeDetails.name),
           };
           // i created a new badge object and insert it in an array
@@ -106,7 +106,7 @@ const Badges = () => {
     }
   };
 
-  // function to get badge ttype 
+  // function to get badge ttype
   const getBadgeTypeAndUnit = (name) => {
     if (name.includes("Early Bird")) {
       return { type: "Early Bird", unit: "consecutive days" };
@@ -143,7 +143,7 @@ const Badges = () => {
     return { backgroundColor, iconText };
   };
 
-  // filtering and manage filter 
+  // filtering and manage filter
   const getFilteredBadges = () => {
     switch (filter) {
       case "earned":
@@ -160,7 +160,7 @@ const Badges = () => {
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
   };
- 
+
   const groupBadgesByType = () => {
     const filteredBadges = getFilteredBadges();
     const groups = {};
@@ -175,7 +175,6 @@ const Badges = () => {
 
     Object.keys(groups).forEach((groupKey) => {
       groups[groupKey].sort((a, b) => {
-        
         const getLevel = (name) => {
           if (name.includes("Master")) return 3;
           if (name.includes("II")) return 2;
@@ -316,9 +315,7 @@ const Badges = () => {
           ))
         ) : (
           <div className="no-badges-message">
-            <p>
-              No badges match your current filter.
-            </p>
+            <p>No badges match your current filter.</p>
           </div>
         )}
       </div>
@@ -332,8 +329,8 @@ const Badges = () => {
           exercise minutes, or hydration levels.
         </p>
         <p>
-          Each badge comes with a YODA token reward. 
-          Keep up your healthy habits to collect them all! 😎
+          Each badge comes with a YODA token reward. Keep up your healthy habits
+          to collect them all! 😎
         </p>
       </div>
     </div>
