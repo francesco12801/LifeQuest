@@ -172,19 +172,19 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         achievementThresholds[keccak256(abi.encodePacked("EarlyBirdI"))] = 7;
         achievementThresholds[
             keccak256(abi.encodePacked("WorkoutWarriorI"))
-        ] = 1000; // 1000 minutes
+        ] = 1000; 
         achievementThresholds[
             keccak256(abi.encodePacked("HydrationHeroI"))
-        ] = 14; // 14 days above 2500ml
+        ] = 14; 
 
         // Set achievement thresholds - Second tier
         achievementThresholds[keccak256(abi.encodePacked("EarlyBirdII"))] = 15;
         achievementThresholds[
             keccak256(abi.encodePacked("WorkoutWarriorII"))
-        ] = 2500; // 2500 minutes
+        ] = 2500; 
         achievementThresholds[
             keccak256(abi.encodePacked("HydrationHeroII"))
-        ] = 30; // 30 days above 3000ml
+        ] = 30; 
 
         // Set achievement thresholds - Third tier
         achievementThresholds[
@@ -192,31 +192,31 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
         ] = 30;
         achievementThresholds[
             keccak256(abi.encodePacked("WorkoutWarriorMaster"))
-        ] = 5000; // 5000 minutes
+        ] = 5000; 
         achievementThresholds[
             keccak256(abi.encodePacked("HydrationHeroMaster"))
-        ] = 60; // 60 days above 3500ml
+        ] = 60; 
 
         // Set rewards for automatic achievement badges - First tier
-        badgeRewards[keccak256(abi.encodePacked("EarlyBirdI"))] = 10 ether; // 10 YODA
-        badgeRewards[keccak256(abi.encodePacked("WorkoutWarriorI"))] = 25 ether; // 25 YODA
-        badgeRewards[keccak256(abi.encodePacked("HydrationHeroI"))] = 15 ether; // 15 YODA
+        badgeRewards[keccak256(abi.encodePacked("EarlyBirdI"))] = 10 ether; 
+        badgeRewards[keccak256(abi.encodePacked("WorkoutWarriorI"))] = 25 ether; 
+        badgeRewards[keccak256(abi.encodePacked("HydrationHeroI"))] = 15 ether; 
 
         // Set rewards for automatic achievement badges - Second tier
-        badgeRewards[keccak256(abi.encodePacked("EarlyBirdII"))] = 20 ether; // 20 YODA
+        badgeRewards[keccak256(abi.encodePacked("EarlyBirdII"))] = 20 ether; 
         badgeRewards[
             keccak256(abi.encodePacked("WorkoutWarriorII"))
-        ] = 50 ether; // 50 YODA
-        badgeRewards[keccak256(abi.encodePacked("HydrationHeroII"))] = 30 ether; // 30 YODA
+        ] = 50 ether; 
+        badgeRewards[keccak256(abi.encodePacked("HydrationHeroII"))] = 30 ether; 
 
         // Set rewards for automatic achievement badges - Third tier
-        badgeRewards[keccak256(abi.encodePacked("EarlyBirdMaster"))] = 40 ether; // 40 YODA
+        badgeRewards[keccak256(abi.encodePacked("EarlyBirdMaster"))] = 40 ether; /
         badgeRewards[
             keccak256(abi.encodePacked("WorkoutWarriorMaster"))
-        ] = 100 ether; // 100 YODA
+        ] = 100 ether; 
         badgeRewards[
             keccak256(abi.encodePacked("HydrationHeroMaster"))
-        ] = 60 ether; // 60 YODA
+        ] = 60 ether; 
     }
 
     function setYodaTokenAddress(address _yodaTokenAddress) external onlyOwner {
@@ -625,7 +625,8 @@ contract VitaVerseNFT is ERC721Enumerable, Ownable {
 
         if (
             data.streakDays >=
-            achievementThresholds[keccak256(abi.encodePacked("EarlyBirdI"))]
+            achievementThresholds[
+                (abi.encodePacked("EarlyBirdI"))]
         ) {
             _attemptAwardBadge(_user, 0, "EarlyBirdI");
         }
